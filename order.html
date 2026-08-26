@@ -65,153 +65,51 @@
       </div>
     </div>
 
-    <!-- 2. CATALOGUE -->
-    <div class="section" id="catalogueSection">
+    <!-- 2. ADD PRODUCTS — searchable dropdown with images -->
+    <div class="section section-dropdown">
       <div class="section-head">
-        <h2 class="section-title"><span class="step">02</span>Choose a product</h2>
-        <span class="hint" id="catalogueCount"></span>
+        <h2 class="section-title"><span class="step">02</span>Add products</h2>
       </div>
 
-      <nav class="cats" id="cats"></nav>
-      <div class="cat-grid" id="catGrid"></div>
-    </div>
+      <div class="picker" id="picker">
+        <div class="picker-field">
+          <input type="text" id="pickerSearch" autocomplete="off"
+                 placeholder="Search article code or name">
+          <button class="picker-btn" id="pickerBtn" aria-label="Search products">
+            <svg viewBox="0 0 18 18" aria-hidden="true">
+              <circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
 
-    <!-- 2b. SELECTED PRODUCT — shown once one is picked -->
-    <div class="section" id="pickedSection" hidden>
-      <div class="section-head">
-        <h2 class="section-title"><span class="step">02</span>Product</h2>
-        <button class="linkbtn" id="changeProduct">Change product</button>
-      </div>
-
-      <div class="picked">
-        <div class="picked-img" id="productImg"></div>
-        <div class="picked-body">
-          <div class="picked-code" id="productCode"></div>
-          <div class="picked-name" id="productName"></div>
-          <div class="picked-rate">
-            <span class="picked-rate-value num" id="productRate"></span>
-            <span class="picked-rate-unit">per pair</span>
-          </div>
-          <div class="swatches" id="swatches"></div>
-          <select id="articleSelect" hidden></select>
-          <select id="colourSelect" hidden></select>
+        <div class="picker-panel" id="pickerPanel" hidden>
+          <div class="picker-cats" id="pickerCats"></div>
+          <div class="picker-list" id="pickerList"></div>
         </div>
       </div>
     </div>
 
-    <!-- 3. BOX RATIO BUILDER -->
-    <div class="section" id="ratioSection" hidden>
-      <div class="section-head">
-        <h2 class="section-title"><span class="step">03</span>Box ratio — 24 pairs per box</h2>
-      </div>
-
-      <div class="presets" id="presets">
-        <button class="preset" data-preset="standard"><strong>Standard</strong><em>4 - 5 - 6 - 5 - 4</em></button>
-        <button class="preset" data-preset="large"><strong>Large mix</strong><em>2 - 4 - 6 - 7 - 5</em></button>
-        <button class="preset" data-preset="small"><strong>Small mix</strong><em>6 - 7 - 5 - 4 - 2</em></button>
-        <button class="preset" data-preset="custom"><strong>Custom</strong><em>Clear all</em></button>
-      </div>
-
-      <div class="ratio" id="ratioGrid"></div>
-
-      <div class="counter" id="counter"></div>
-    </div>
-
-    <!-- 4 + 5. BOXES AND LIVE CALCULATION -->
-    <div class="section" id="qtySection" hidden>
-      <div class="section-head">
-        <h2 class="section-title"><span class="step">04</span>Quantity</h2>
-      </div>
-
-      <div class="grid-2" style="margin-bottom:24px">
-        <div>
-          <label class="label" for="boxesInput">Number of boxes</label>
-          <input type="number" id="boxesInput" min="1" step="1" value="10">
-        </div>
-      </div>
-
-      <div class="calc">
-        <div class="calc-total">
-          <div class="calc-total-value num" id="calcTotalPairs">240</div>
-          <div class="calc-total-label">Total pairs</div>
-          <div class="calc-total-formula num" id="calcFormula">10 boxes &times; 24 pairs</div>
-        </div>
-
-        <div class="calc-value">
-          <span class="label">Line value</span>
-          <span class="calc-value-amount num" id="calcLineValue">—</span>
-          <span class="calc-value-formula num" id="calcRateFormula"></span>
-        </div>
-
-        <div class="table-scroll">
-          <table id="calcTable">
-            <thead>
-              <tr id="calcHead"></tr>
-            </thead>
-            <tbody>
-              <tr id="calcPerBox"></tr>
-              <tr id="calcOrdered"></tr>
-              <tr id="calcStock"></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div style="margin-top:22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-        <button class="btn" id="addLineBtn" disabled>Add to order</button>
-        <span class="hint" id="addHint">Assign all 24 pairs to enable</span>
-      </div>
-    </div>
-
-    <!-- 6. ORDER LIST -->
+    <!-- 3. SELECTED ITEMS -->
     <div class="section">
       <div class="section-head">
-        <h2 class="section-title">Order lines</h2>
+        <h2 class="section-title"><span class="step">03</span>Selected items</h2>
+        <span class="hint" id="selCount"></span>
       </div>
 
-      <div id="orderEmpty" class="empty">No lines added yet.</div>
+      <div id="selEmpty" class="empty">Nothing selected yet — search above to add products.</div>
+      <div class="sel-list" id="selList"></div>
 
-      <div class="table-scroll" id="orderTableWrap" hidden>
-        <table>
-          <thead>
-            <tr>
-              <th>Article</th>
-              <th style="text-align:left">Ratio</th>
-              <th>Boxes</th>
-              <th>Pairs</th>
-              <th>Value</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="orderBody"></tbody>
-        </table>
-      </div>
-
-      <div class="order-foot" id="orderFoot" hidden>
-        <div class="foot-fig">
-          <span class="label">Total boxes</span>
-          <div class="foot-fig-value num" id="totalBoxes">0</div>
-        </div>
-        <div class="foot-fig">
-          <span class="label">Total pairs</span>
-          <div class="foot-fig-value num" id="totalPairs">0</div>
-        </div>
-        <div class="foot-fig">
-          <span class="label">Order value</span>
-          <div class="foot-fig-value num accent" id="totalValue">₹0</div>
-        </div>
+      <div class="sum" id="sumBox" hidden>
+        <div class="sum-row"><span>Total boxes</span><span class="num" id="sumBoxes">0</span></div>
+        <div class="sum-row"><span>Total pairs</span><span class="num" id="sumPairs">0</span></div>
+        <div class="sum-row sum-total"><span>Order value</span><span class="num" id="sumValue">₹0</span></div>
       </div>
 
       <div class="credit" id="creditBox" hidden>
-        <div class="credit-row">
-          <span>Credit limit</span><span class="num" id="crLimit"></span>
-        </div>
-        <div class="credit-row">
-          <span>Less outstanding</span><span class="num" id="crOut"></span>
-        </div>
-        <div class="credit-row">
-          <span>Less this order</span><span class="num" id="crOrder"></span>
-        </div>
+        <div class="credit-row"><span>Credit limit</span><span class="num" id="crLimit"></span></div>
+        <div class="credit-row"><span>Less outstanding</span><span class="num" id="crOut"></span></div>
+        <div class="credit-row"><span>Less this order</span><span class="num" id="crOrder"></span></div>
         <div class="credit-row credit-total" id="crHeadroomRow">
           <span>Credit remaining</span><span class="num" id="crHeadroom"></span>
         </div>

@@ -5,6 +5,16 @@
 
 const PAIRS_PER_BOX = 24;
 
+// box counts offered in the quantity dropdown
+const BOX_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50];
+
+// ratio sets offered in the size dropdown
+const RATIO_SETS = [
+  { key: "standard", label: "Standard" },
+  { key: "large", label: "Large mix" },
+  { key: "small", label: "Small mix" }
+];
+
 // ---------- helpers ----------
 
 // 142500 -> "1,42,500"  (Indian digit grouping)
@@ -24,14 +34,33 @@ function el(id) {
   return document.getElementById(id);
 }
 
+function esc(str) {
+  return String(str).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+  });
+}
+
+const reduceMotion = window.matchMedia &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// replay a one-shot CSS animation class
+function flash(node, cls) {
+  if (!node || reduceMotion) return;
+  node.classList.remove(cls);
+  void node.offsetWidth;
+  node.classList.add(cls);
+}
+
 // ---------- state ----------
 
 const state = {
   customer: null,
-  ratio: [0, 0, 0, 0, 0],
-  boxes: 10,
-  lines: []
+  items: [],          // { id, code, colour, preset, boxes }
+  category: "all",
+  search: ""
 };
+
+let nextItemId = 1;
 
 // ============================================================
 // TOP BAR + TABS
@@ -77,7 +106,7 @@ function initCustomers() {
   sel.addEventListener("change", function () {
     state.customer = CUSTOMERS.find(function (c) { return c.id === sel.value; }) || null;
     renderCustomerFigures();
-    renderCredit(orderValue());
+    renderTotals();
   });
 }
 
@@ -107,153 +136,6 @@ function renderCustomerFigures() {
 }
 
 // ============================================================
-// 2. ARTICLE + COLOUR
-// ============================================================
-
-function initArticles() {
-  const artSel = el("articleSelect");
-  ARTICLES.forEach(function (a) {
-    const o = document.createElement("option");
-    o.value = a.code;
-    o.textContent = a.code + " — " + a.name;
-    artSel.appendChild(o);
-  });
-
-  el("colourSelect").addEventListener("change", function () {
-    renderSwatches();
-    renderProduct();
-    renderCalc();
-  });
-
-  // tapping a colour chip drives the same state as the hidden select
-  el("swatches").addEventListener("click", function (e) {
-    const btn = e.target.closest(".swatch");
-    if (!btn) return;
-    el("colourSelect").value = btn.dataset.colour;
-    renderSwatches();
-    renderProduct();
-    renderCalc();
-  });
-
-  el("changeProduct").addEventListener("click", showCatalogue);
-
-  renderColours();
-}
-
-function currentArticle() {
-  return getArticle(el("articleSelect").value);
-}
-
-function renderColours() {
-  const sel = el("colourSelect");
-  const art = currentArticle();
-  sel.innerHTML = "";
-  art.colours.forEach(function (col) {
-    const o = document.createElement("option");
-    o.value = col;
-    o.textContent = col;
-    sel.appendChild(o);
-  });
-}
-
-// ============================================================
-// CATALOGUE
-// Browse by category, tap a product, and the ratio builder
-// below opens already set to that article and colour.
-// ============================================================
-
-let activeCategory = "gents";
-
-function initCatalogue() {
-  el("cats").innerHTML = CATEGORIES.map(function (c) {
-    return '<button class="cat' + (c.key === activeCategory ? " is-active" : "") +
-      '" data-cat="' + c.key + '">' + c.label + "</button>";
-  }).join("");
-
-  el("cats").addEventListener("click", function (e) {
-    const btn = e.target.closest(".cat");
-    if (!btn) return;
-    activeCategory = btn.dataset.cat;
-    document.querySelectorAll(".cat").forEach(function (c) {
-      c.classList.toggle("is-active", c.dataset.cat === activeCategory);
-    });
-    renderCatGrid();
-  });
-
-  el("catGrid").addEventListener("click", function (e) {
-    const card = e.target.closest(".card");
-    if (!card) return;
-    // a colour dot on the card picks that colour straight away
-    const dot = e.target.closest(".card-dot");
-    pickProduct(card.dataset.code, dot ? dot.dataset.colour : null);
-  });
-
-  renderCatGrid();
-}
-
-function renderCatGrid() {
-  const list = ARTICLES.filter(function (a) { return a.category === activeCategory; });
-
-  el("catalogueCount").textContent =
-    list.length + (list.length === 1 ? " article" : " articles");
-
-  el("catGrid").innerHTML = list.map(function (a) {
-    const dots = a.colours.map(function (col) {
-      const c = COLOUR_HEX[col] || COLOUR_HEX.Black;
-      return '<span class="card-dot" data-colour="' + col + '" title="' + col +
-        '" style="background:' + c.body + '"></span>';
-    }).join("");
-
-    return '<button type="button" class="card" data-code="' + a.code + '">' +
-      '<span class="card-img">' + chappalSVG(a.code, a.colours[0]) + "</span>" +
-      '<span class="card-body">' +
-        '<span class="card-top">' +
-          '<span class="card-code">' + a.code + "</span>" +
-          '<span class="card-rate num">' + rupees(a.rate) + "</span>" +
-        "</span>" +
-        '<span class="card-name">' + a.name + "</span>" +
-        '<span class="card-dots">' + dots + "</span>" +
-      "</span>" +
-    "</button>";
-  }).join("");
-}
-
-function pickProduct(code, colour) {
-  el("articleSelect").value = code;
-  renderColours();
-
-  const art = getArticle(code);
-  el("colourSelect").value =
-    colour && art.colours.indexOf(colour) !== -1 ? colour : art.colours[0];
-
-  el("catalogueSection").hidden = true;
-  el("pickedSection").hidden = false;
-  el("ratioSection").hidden = false;
-  el("qtySection").hidden = false;
-
-  renderSwatches();
-  renderProduct();
-  renderAll();
-
-  el("pickedSection").scrollIntoView({
-    behavior: reduceMotion ? "auto" : "smooth",
-    block: "start"
-  });
-}
-
-function showCatalogue() {
-  el("catalogueSection").hidden = false;
-  el("pickedSection").hidden = true;
-  el("ratioSection").hidden = true;
-  el("qtySection").hidden = true;
-  renderCatGrid();
-  el("catalogueSection").scrollIntoView({
-    behavior: reduceMotion ? "auto" : "smooth",
-    block: "start"
-  });
-}
-
-// ============================================================
 // PRODUCT ILLUSTRATION
 // Drawn as inline SVG rather than shipped photos: it recolours
 // live from the colour dropdown and adds no external files.
@@ -272,11 +154,8 @@ const SOLE =
   "s-21-8-24-22c-4-18 2-40 1-56-1-14-7-24-7-40 0-20 13-32 30-32Z";
 
 const FAMILY = {
-  // gents: full width, chunky thong strap
   GTS: { squash: "", strap: "thong", width: 10 },
-  // ladies: narrower sole, slim band across the forefoot
   LDS: { squash: "translate(50 87) scale(0.90 1) translate(-50 -87)", strap: "band", width: 7 },
-  // kids: short and stubby
   KID: { squash: "translate(50 87) scale(0.96 0.82) translate(-50 -87)", strap: "thong", width: 9 }
 };
 
@@ -289,7 +168,6 @@ function strapMarkup(style, c, w) {
   }
 
   if (style === "cross") {
-    // two straps crossing over the instep
     return '<path d="M23 78C38 70 58 58 74 62" fill="none" stroke="' + c.dark +
         '" stroke-width="' + w + '" stroke-linecap="round"/>' +
       '<path d="M77 78C62 70 42 58 26 62" fill="none" stroke="' + c.dark +
@@ -297,7 +175,6 @@ function strapMarkup(style, c, w) {
   }
 
   if (style === "tstrap") {
-    // band across, with a strip running up to the toe post
     return '<path d="M22 72c10-10 46-10 56 0" fill="none" stroke="' + c.dark +
         '" stroke-width="' + w + '" stroke-linecap="round"/>' +
       '<path d="M50 40v30" fill="none" stroke="' + c.dark +
@@ -305,7 +182,6 @@ function strapMarkup(style, c, w) {
       '<circle cx="50" cy="38" r="4" fill="' + c.dark + '"/>';
   }
 
-  // thong: a V from the toe post out to each edge
   return '<path d="M50 44C45 55 38 64 27 71" fill="none" stroke="' + c.dark +
       '" stroke-width="' + w + '" stroke-linecap="round"/>' +
     '<path d="M50 44c5 11 12 20 23 27" fill="none" stroke="' + c.dark +
@@ -323,302 +199,161 @@ function chappalSVG(articleCode, colourName) {
     articleCode + " in " + colourName + '">' +
       '<ellipse class="ch-shadow" cx="50" cy="167" rx="27" ry="4.5"/>' +
       '<g' + (fam.squash ? ' transform="' + fam.squash + '"' : "") + ">" +
-        // sole, with a darker rim
         '<path class="ch-sole" d="' + SOLE + '" fill="' + c.body +
           '" stroke="' + c.dark + '" stroke-width="3"/>' +
-        // footbed contour, just enough to read as a shoe not a shape
         '<path d="M31 96c12 5 26 5 38 0" fill="none" stroke="' + c.dark +
           '" stroke-width="1.6" opacity="0.3"/>' +
         '<path d="M33 124c11 4 23 4 34 0" fill="none" stroke="' + c.dark +
           '" stroke-width="1.6" opacity="0.22"/>' +
         strapMarkup(strap, c, fam.width) +
-        // highlight down the left of the footbed
         '<path class="ch-shine" d="M28 52c1-14 8-24 17-28" fill="none" stroke="' +
           c.light + '" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>' +
       "</g>" +
     "</svg>";
 }
 
-function renderProduct() {
-  const art = currentArticle();
-  const colour = el("colourSelect").value;
-  const box = el("productImg");
+// ============================================================
+// 2. PRODUCT PICKER — searchable dropdown with images
+// ============================================================
 
-  box.innerHTML = chappalSVG(art.code, colour);
-  el("productCode").textContent = art.code;
-  el("productName").textContent = art.name + " · " + colour;
-  el("productRate").textContent = rupees(art.rate);
+function initPicker() {
+  el("pickerCats").innerHTML =
+    [{ key: "all", label: "All" }].concat(CATEGORIES).map(function (c) {
+      return '<button type="button" class="pcat' +
+        (c.key === state.category ? " is-active" : "") +
+        '" data-cat="' + c.key + '">' + c.label + "</button>";
+    }).join("");
 
-  // re-trigger the swap animation
-  box.classList.remove("is-swapping");
-  void box.offsetWidth;
-  box.classList.add("is-swapping");
+  el("pickerCats").addEventListener("click", function (e) {
+    const btn = e.target.closest(".pcat");
+    if (!btn) return;
+    state.category = btn.dataset.cat;
+    document.querySelectorAll(".pcat").forEach(function (c) {
+      c.classList.toggle("is-active", c.dataset.cat === state.category);
+    });
+    renderPickerList();
+  });
+
+  el("pickerSearch").addEventListener("input", function () {
+    state.search = this.value.trim().toLowerCase();
+    openPicker();
+    renderPickerList();
+  });
+
+  el("pickerSearch").addEventListener("focus", openPicker);
+
+  el("pickerBtn").addEventListener("click", function () {
+    if (el("pickerPanel").hidden) {
+      openPicker();
+      el("pickerSearch").focus();
+    } else {
+      closePicker();
+    }
+  });
+
+  el("pickerList").addEventListener("click", function (e) {
+    const row = e.target.closest(".prow");
+    if (!row) return;
+    addItem(row.dataset.code, null);
+  });
+
+  // clicking away closes the panel
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest("#picker")) closePicker();
+  });
+
+  renderPickerList();
 }
 
-// colour chips under the dropdowns — faster to tap than a select on a phone
-function renderSwatches() {
-  const art = currentArticle();
-  const current = el("colourSelect").value;
-  el("swatches").innerHTML = art.colours.map(function (col) {
-    const c = COLOUR_HEX[col] || COLOUR_HEX.Black;
-    return '<button type="button" class="swatch' + (col === current ? " is-on" : "") +
-      '" data-colour="' + col + '" title="' + col + '" aria-label="' + col + '">' +
-      '<span style="background:' + c.body + '"></span>' + col + "</button>";
+function openPicker() {
+  el("pickerPanel").hidden = false;
+  el("picker").classList.add("is-open");
+}
+
+function closePicker() {
+  el("pickerPanel").hidden = true;
+  el("picker").classList.remove("is-open");
+}
+
+function matchingArticles() {
+  return ARTICLES.filter(function (a) {
+    if (state.category !== "all" && a.category !== state.category) return false;
+    if (!state.search) return true;
+    return (a.code + " " + a.name).toLowerCase().indexOf(state.search) !== -1;
+  });
+}
+
+function renderPickerList() {
+  const list = matchingArticles();
+  const box = el("pickerList");
+
+  if (list.length === 0) {
+    box.innerHTML = '<p class="picker-none">No article matches “' +
+      esc(state.search) + '”.</p>';
+    return;
+  }
+
+  box.innerHTML = list.map(function (a) {
+    const dots = a.colours.map(function (col) {
+      const c = COLOUR_HEX[col] || COLOUR_HEX.Black;
+      return '<span class="prow-dot" style="background:' + c.body +
+        '" title="' + col + '"></span>';
+    }).join("");
+
+    return '<button type="button" class="prow" data-code="' + a.code + '">' +
+      '<span class="prow-img">' + chappalSVG(a.code, a.colours[0]) + "</span>" +
+      '<span class="prow-main">' +
+        '<span class="prow-code">' + a.code + "</span>" +
+        '<span class="prow-name">' + esc(a.name) + "</span>" +
+        '<span class="prow-dots">' + dots + "</span>" +
+      "</span>" +
+      '<span class="prow-rate num">' + rupees(a.rate) + "</span>" +
+    "</button>";
   }).join("");
 }
 
 // ============================================================
-// 3. RATIO BUILDER
+// 3. SELECTED ITEMS
 // ============================================================
 
-function initRatio() {
-  const grid = el("ratioGrid");
-  SIZES.forEach(function (size, i) {
-    const col = document.createElement("div");
-    col.className = "ratio-col";
-    col.innerHTML =
-      '<div class="ratio-size">' + size + "</div>" +
-      '<div class="stepper">' +
-        '<button class="step-btn" data-delta="-1" data-i="' + i + '" aria-label="Decrease ' + size + '">&minus;</button>' +
-        '<input class="ratio-input num" type="number" min="0" max="24" data-i="' + i + '" value="0">' +
-        '<button class="step-btn" data-delta="1" data-i="' + i + '" aria-label="Increase ' + size + '">+</button>' +
-      "</div>" +
-      '<div class="ratio-stock" data-stock="' + i + '"></div>';
-    grid.appendChild(col);
-  });
+function initSelected() {
+  // colour / size / quantity all funnel through one change handler
+  el("selList").addEventListener("change", function (e) {
+    const field = e.target.closest("[data-field]");
+    if (!field) return;
 
-  grid.addEventListener("click", function (e) {
-    const btn = e.target.closest(".step-btn");
-    if (!btn) return;
-    const i = +btn.dataset.i;
-    const next = state.ratio[i] + +btn.dataset.delta;
-    state.ratio[i] = Math.max(0, Math.min(PAIRS_PER_BOX, next));
-    syncRatioInputs();
-    flash(grid.querySelectorAll(".ratio-input")[i], "bump");
-    renderAll();
-  });
-
-  grid.addEventListener("input", function (e) {
-    const input = e.target.closest(".ratio-input");
-    if (!input) return;
-    const v = parseInt(input.value, 10);
-    state.ratio[+input.dataset.i] =
-      isNaN(v) ? 0 : Math.max(0, Math.min(PAIRS_PER_BOX, v));
-    renderAll();
-  });
-
-  el("presets").addEventListener("click", function (e) {
-    const btn = e.target.closest(".preset");
-    if (!btn) return;
-    const key = btn.dataset.preset;
-    state.ratio = key === "custom" ? [0, 0, 0, 0, 0] : PRESETS[key].slice();
-    syncRatioInputs();
-    renderAll();
-  });
-
-  // start on the standard ratio so the demo opens with live numbers
-  state.ratio = PRESETS.standard.slice();
-  syncRatioInputs();
-}
-
-function syncRatioInputs() {
-  document.querySelectorAll(".ratio-input").forEach(function (input) {
-    input.value = state.ratio[+input.dataset.i];
-  });
-}
-
-function ratioTotal() {
-  return state.ratio.reduce(function (a, b) { return a + b; }, 0);
-}
-
-function renderCounter() {
-  const total = ratioTotal();
-  const remaining = PAIRS_PER_BOX - total;
-  const c = el("counter");
-  const ok = total === PAIRS_PER_BOX;
-
-  let tail;
-  if (ok) tail = "box complete";
-  else if (remaining > 0) tail = remaining + " remaining";
-  else tail = Math.abs(remaining) + " over";
-
-  c.innerHTML =
-    total + " of " + PAIRS_PER_BOX + " assigned &mdash; " + tail +
-    "<small>One box = 24 pairs</small>";
-  c.classList.toggle("ok", ok);
-  c.classList.toggle("warn", !ok);
-}
-
-function renderPresetState() {
-  const cur = state.ratio.join(",");
-  document.querySelectorAll(".preset").forEach(function (btn) {
-    const key = btn.dataset.preset;
-    const match = key === "custom"
-      ? cur === "0,0,0,0,0"
-      : PRESETS[key].join(",") === cur;
-    btn.classList.toggle("is-active", match);
-  });
-}
-
-// ============================================================
-// MOTION HELPERS
-// ============================================================
-
-const reduceMotion = window.matchMedia &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-// replay a one-shot CSS animation class
-function flash(node, cls) {
-  if (!node || reduceMotion) return;
-  node.classList.remove(cls);
-  void node.offsetWidth;
-  node.classList.add(cls);
-}
-
-// roll the headline figure to its new value instead of snapping
-let totalAnim = null;
-let lastTotal = null;
-
-function setTotalPairs(value) {
-  const node = el("calcTotalPairs");
-
-  if (lastTotal === null || reduceMotion) {
-    node.textContent = groupIndian(value);
-    lastTotal = value;
-    return;
-  }
-  if (value === lastTotal) return;
-
-  const from = lastTotal;
-  const start = performance.now();
-  const dur = 340;
-
-  if (totalAnim) cancelAnimationFrame(totalAnim);
-  flash(node, "pop");
-
-  function step(now) {
-    const t = Math.min(1, (now - start) / dur);
-    const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
-    node.textContent = groupIndian(Math.round(from + (value - from) * eased));
-    if (t < 1) {
-      totalAnim = requestAnimationFrame(step);
-    } else {
-      node.textContent = groupIndian(value);
-      totalAnim = null;
-    }
-  }
-
-  totalAnim = requestAnimationFrame(step);
-  lastTotal = value;
-}
-
-// ============================================================
-// 4 + 5. LIVE CALCULATION
-// ============================================================
-
-function initBoxes() {
-  el("boxesInput").addEventListener("input", function () {
-    const v = parseInt(this.value, 10);
-    state.boxes = isNaN(v) || v < 1 ? 0 : v;
-    renderAll();
-  });
-}
-
-function renderCalc() {
-  const boxes = state.boxes;
-  const stock = getStock(el("articleSelect").value, el("colourSelect").value);
-
-  setTotalPairs(boxes * PAIRS_PER_BOX);
-  el("calcFormula").innerHTML =
-    (boxes || 0) + " boxes × " + PAIRS_PER_BOX + " pairs";
-
-  const art = currentArticle();
-  const linePairs = boxes * PAIRS_PER_BOX;
-  el("calcLineValue").textContent = rupees(linePairs * art.rate);
-  el("calcRateFormula").textContent =
-    groupIndian(linePairs) + " pairs × " + rupees(art.rate);
-
-  // header
-  let head = "<th>Size</th>";
-  SIZES.forEach(function (s) { head += "<th>" + s + "</th>"; });
-  head += "<th>Total</th>";
-  el("calcHead").innerHTML = head;
-
-  // per box
-  let perBox = '<td class="t-row-label">Per box</td>';
-  state.ratio.forEach(function (n) {
-    perBox += '<td class="t-strong">' + n + "</td>";
-  });
-  const total = ratioTotal();
-  perBox += '<td class="t-strong ' + (total === PAIRS_PER_BOX ? "ok" : "warn") + '">' + total + "</td>";
-  el("calcPerBox").innerHTML = perBox;
-
-  // ordered
-  let ordered = '<td class="t-row-label">Ordered</td>';
-  state.ratio.forEach(function (n) {
-    ordered += '<td class="t-lg">' + groupIndian(n * boxes) + "</td>";
-  });
-  ordered += '<td class="t-lg accent">' + groupIndian(total * boxes) + "</td>";
-  el("calcOrdered").innerHTML = ordered;
-
-  // stock indicator
-  let stockRow = '<td class="t-row-label">Stock</td>';
-  state.ratio.forEach(function (n, i) {
-    const need = n * boxes;
-    const have = stock[i];
-    const low = have < need || have < LOW_STOCK_THRESHOLD;
-    stockRow += '<td class="stock-tag ' + (low ? "warn" : "") + '">' +
-      (low ? "Low stock" : "In stock") + "</td>";
-  });
-  stockRow += "<td></td>";
-  el("calcStock").innerHTML = stockRow;
-
-  // per-size note under the ratio builder
-  document.querySelectorAll("[data-stock]").forEach(function (node, i) {
-    const need = state.ratio[i] * boxes;
-    const have = stock[i];
-    const low = have < need || have < LOW_STOCK_THRESHOLD;
-    node.textContent = low ? "Low stock" : "In stock";
-    node.classList.toggle("warn", low);
-  });
-}
-
-// ============================================================
-// 6. ORDER LINES
-// ============================================================
-
-function initOrderList() {
-  el("addLineBtn").addEventListener("click", function () {
-    const art = currentArticle();
-    const newId = Date.now() + Math.random();
-    state.lastAddedId = newId;
-    state.lines.push({
-      id: newId,
-      article: art.code,
-      articleName: art.name,
-      colour: el("colourSelect").value,
-      boxes: state.boxes,
-      ratio: state.ratio.slice(),
-      pairs: state.boxes * PAIRS_PER_BOX,
-      rate: art.rate,
-      value: state.boxes * PAIRS_PER_BOX * art.rate
+    const item = state.items.find(function (i) {
+      return String(i.id) === field.dataset.id;
     });
-    el("confirmMsg").hidden = true;
-    renderOrderList();
-    updateButtons();
+    if (!item) return;
+
+    const key = field.dataset.field;
+    item[key] = key === "boxes" ? parseInt(field.value, 10) : field.value;
+
+    if (key === "colour") {
+      const img = el("selList").querySelector('[data-img="' + item.id + '"]');
+      if (img) {
+        img.innerHTML = chappalSVG(item.code, item.colour);
+        flash(img, "is-swapping");
+      }
+    }
+
+    updateRowFigures(item);
+    renderTotals();
   });
 
-  el("orderBody").addEventListener("click", function (e) {
+  el("selList").addEventListener("click", function (e) {
     const btn = e.target.closest("[data-remove]");
     if (!btn) return;
+
     const id = btn.dataset.remove;
-    const row = btn.closest("tr");
+    const row = btn.closest(".sel");
 
     function drop() {
-      state.lines = state.lines.filter(function (l) { return String(l.id) !== id; });
+      state.items = state.items.filter(function (i) { return String(i.id) !== id; });
       el("confirmMsg").hidden = true;
-      renderOrderList();
-      updateButtons();
+      renderSelected();
+      renderTotals();
     }
 
     if (reduceMotion) {
@@ -629,58 +364,136 @@ function initOrderList() {
     }
   });
 
-  el("submitBtn").addEventListener("click", function () {
-    const orderNo = "SO-" + nextOrderNumber;
-    nextOrderNumber++;
-
-    const boxes = state.lines.reduce(function (a, l) { return a + l.boxes; }, 0);
-    const pairs = state.lines.reduce(function (a, l) { return a + l.pairs; }, 0);
-
-    // inline record, left on the page once the overlay is dismissed
-    const msg = el("confirmMsg");
-    msg.textContent =
-      "Order sent to office for approval — Order no. " + orderNo;
-    msg.hidden = false;
-
-    showSuccess(orderNo, state.lines.length, boxes, pairs);
-  });
-
+  el("submitBtn").addEventListener("click", submitOrder);
   el("successDone").addEventListener("click", closeSuccess);
 }
 
-function renderOrderList() {
-  const has = state.lines.length > 0;
-  el("orderEmpty").hidden = has;
-  el("orderTableWrap").hidden = !has;
-  el("orderFoot").hidden = !has;
+function addItem(code, colour) {
+  const art = getArticle(code);
+  if (!art) return;
 
-  const body = el("orderBody");
-  body.innerHTML = state.lines.map(function (l) {
-    const isNew = l.id === state.lastAddedId;
-    return '<tr class="' + (isNew && !reduceMotion ? "row-in" : "") + '">' +
-      '<td><span class="t-name">' + l.article + "</span>" +
-        '<span class="t-sub">' + l.colour + "</span></td>" +
-      '<td style="text-align:left" class="ratio-chip">' + l.ratio.join("-") + "</td>" +
-      '<td class="t-strong">' + l.boxes + "</td>" +
-      '<td class="t-strong">' + groupIndian(l.pairs) + "</td>" +
-      '<td class="t-strong">' + rupees(l.value) + "</td>" +
-      '<td><button class="linkbtn" data-remove="' + l.id + '">Remove</button></td>' +
-      "</tr>";
-  }).join("");
+  state.items.push({
+    id: nextItemId++,
+    code: code,
+    colour: colour && art.colours.indexOf(colour) !== -1 ? colour : art.colours[0],
+    preset: "standard",
+    boxes: 10
+  });
 
-  const boxes = state.lines.reduce(function (a, l) { return a + l.boxes; }, 0);
-  const pairs = state.lines.reduce(function (a, l) { return a + l.pairs; }, 0);
-  const value = orderValue();
-
-  el("totalBoxes").textContent = groupIndian(boxes);
-  el("totalPairs").textContent = groupIndian(pairs);
-  el("totalValue").textContent = rupees(value);
-
-  renderCredit(value);
+  el("confirmMsg").hidden = true;
+  el("pickerSearch").value = "";
+  state.search = "";
+  closePicker();
+  renderPickerList();
+  renderSelected();
+  renderTotals();
 }
 
+function itemPairs(item) {
+  return item.boxes * PAIRS_PER_BOX;
+}
+
+function itemValue(item) {
+  return itemPairs(item) * getArticle(item.code).rate;
+}
+
+function renderSelected() {
+  const has = state.items.length > 0;
+  el("selEmpty").hidden = has;
+  el("sumBox").hidden = !has;
+  el("selCount").textContent = has
+    ? state.items.length + (state.items.length === 1 ? " item" : " items")
+    : "";
+
+  el("selList").innerHTML = state.items.map(function (it) {
+    const art = getArticle(it.code);
+
+    const colourOpts = art.colours.map(function (c) {
+      return '<option value="' + c + '"' +
+        (c === it.colour ? " selected" : "") + ">" + c + "</option>";
+    }).join("");
+
+    const sizeOpts = RATIO_SETS.map(function (r) {
+      return '<option value="' + r.key + '"' +
+        (r.key === it.preset ? " selected" : "") + ">" +
+        r.label + " · " + PRESETS[r.key].join("-") + "</option>";
+    }).join("");
+
+    const boxOpts = BOX_OPTIONS.map(function (n) {
+      return '<option value="' + n + '"' +
+        (n === it.boxes ? " selected" : "") + ">" + n +
+        (n === 1 ? " box" : " boxes") + "</option>";
+    }).join("");
+
+    return '<div class="sel row-in">' +
+      '<div class="sel-img" data-img="' + it.id + '">' +
+        chappalSVG(it.code, it.colour) +
+      "</div>" +
+
+      '<div class="sel-main">' +
+        '<div class="sel-code">' + it.code + "</div>" +
+        '<div class="sel-name">' + esc(art.name) + "</div>" +
+        '<div class="sel-rate num">' + rupees(art.rate) + " per pair</div>" +
+      "</div>" +
+
+      '<div class="sel-controls">' +
+        '<label class="sel-ctl">' +
+          '<span class="label">Colour</span>' +
+          '<select data-field="colour" data-id="' + it.id + '">' + colourOpts + "</select>" +
+        "</label>" +
+        '<label class="sel-ctl sel-ctl-wide">' +
+          '<span class="label">Size ratio</span>' +
+          '<select data-field="preset" data-id="' + it.id + '">' + sizeOpts + "</select>" +
+        "</label>" +
+        '<label class="sel-ctl">' +
+          '<span class="label">Quantity</span>' +
+          '<select data-field="boxes" data-id="' + it.id + '">' + boxOpts + "</select>" +
+        "</label>" +
+      "</div>" +
+
+      '<div class="sel-figs">' +
+        '<div class="sel-pairs num" data-pairs="' + it.id + '"></div>' +
+        '<div class="sel-value num" data-value="' + it.id + '"></div>' +
+      "</div>" +
+
+      '<button class="sel-x" data-remove="' + it.id + '" aria-label="Remove ' +
+        it.code + '">&times;</button>' +
+    "</div>";
+  }).join("");
+
+  state.items.forEach(updateRowFigures);
+}
+
+function updateRowFigures(item) {
+  const p = el("selList").querySelector('[data-pairs="' + item.id + '"]');
+  const v = el("selList").querySelector('[data-value="' + item.id + '"]');
+  if (!p || !v) return;
+
+  p.textContent = groupIndian(itemPairs(item)) + " pairs";
+  v.textContent = rupees(itemValue(item));
+  flash(v, "bump");
+}
+
+// ============================================================
+// TOTALS + CREDIT
+// ============================================================
+
 function orderValue() {
-  return state.lines.reduce(function (a, l) { return a + l.value; }, 0);
+  return state.items.reduce(function (a, i) { return a + itemValue(i); }, 0);
+}
+
+function renderTotals() {
+  const boxes = state.items.reduce(function (a, i) { return a + i.boxes; }, 0);
+  const pairs = state.items.reduce(function (a, i) { return a + itemPairs(i); }, 0);
+  const value = orderValue();
+
+  el("sumBoxes").textContent = groupIndian(boxes);
+  el("sumPairs").textContent = groupIndian(pairs);
+  el("sumValue").textContent = rupees(value);
+  flash(el("sumValue"), "pop");
+
+  el("submitBtn").disabled = state.items.length === 0;
+  renderCredit(value);
 }
 
 // Does this order still fit inside what the dealer is allowed to owe?
@@ -688,7 +501,7 @@ function renderCredit(value) {
   const c = state.customer;
   const box = el("creditBox");
 
-  if (!c || state.lines.length === 0) {
+  if (!c || state.items.length === 0) {
     box.hidden = true;
     return;
   }
@@ -715,23 +528,10 @@ function renderCredit(value) {
   }
 }
 
-function updateButtons() {
-  const ready = ratioTotal() === PAIRS_PER_BOX && state.boxes > 0;
-  el("addLineBtn").disabled = !ready;
-
-  const hint = el("addHint");
-  if (ready) hint.textContent = "";
-  else if (state.boxes < 1) hint.textContent = "Enter number of boxes";
-  else hint.textContent = "Assign all 24 pairs to enable";
-
-  el("submitBtn").disabled = state.lines.length === 0;
-}
-
 // ============================================================
 // SUCCESS CHIME
 // Synthesised with the Web Audio API — no audio file to ship,
-// so it still works offline. Audio is a nice-to-have: every
-// failure path is swallowed so it can never break the demo.
+// so it still works offline. Every failure path is swallowed.
 // ============================================================
 
 let audioCtx = null;
@@ -743,7 +543,7 @@ function initSound() {
   btn.addEventListener("click", function () {
     soundOn = !soundOn;
     renderSoundToggle();
-    if (soundOn) playChime(); // little preview so you know it's back on
+    if (soundOn) playChime();
   });
 }
 
@@ -770,11 +570,9 @@ function playChime() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     if (!audioCtx) audioCtx = new AC();
-    // browsers start the context suspended until a user gesture
     if (audioCtx.state === "suspended" && audioCtx.resume) audioCtx.resume();
 
     const now = audioCtx.currentTime;
-    // rising major triad — E5, G#5, B5
     const notes = [
       { freq: 659.25, at: 0.00 },
       { freq: 830.61, at: 0.085 },
@@ -806,15 +604,25 @@ function playChime() {
 // ORDER PLACED — animated confirmation
 // ============================================================
 
-function showSuccess(orderNo, lineCount, boxes, pairs) {
+function submitOrder() {
+  const orderNo = "SO-" + nextOrderNumber;
+  nextOrderNumber++;
+
+  const boxes = state.items.reduce(function (a, i) { return a + i.boxes; }, 0);
+  const pairs = state.items.reduce(function (a, i) { return a + itemPairs(i); }, 0);
+  const value = orderValue();
+
+  const msg = el("confirmMsg");
+  msg.textContent = "Order sent to office for approval — Order no. " + orderNo;
+  msg.hidden = false;
+
   el("successOrderNo").textContent = orderNo;
   el("successMeta").textContent =
-    lineCount + (lineCount === 1 ? " line" : " lines") + " · " +
-    groupIndian(boxes) + " boxes · " + groupIndian(pairs) + " pairs · " +
-    rupees(orderValue());
+    state.items.length + (state.items.length === 1 ? " item" : " items") + " · " +
+    groupIndian(boxes) + " boxes · " + groupIndian(pairs) + " pairs · " + rupees(value);
 
   const c = state.customer;
-  const over = c && (c.creditLimit - c.outstanding - orderValue()) < 0;
+  const over = c && (c.creditLimit - c.outstanding - value) < 0;
   el("successSub").textContent = over
     ? "Held for credit approval at office"
     : "Sent to office for approval";
@@ -831,7 +639,7 @@ function showSuccess(orderNo, lineCount, boxes, pairs) {
 function restartAnimations(root) {
   const nodes = [root].concat(Array.prototype.slice.call(root.querySelectorAll("*")));
   nodes.forEach(function (n) { n.style.animation = "none"; });
-  void root.offsetWidth; // force reflow
+  void root.offsetWidth;
   nodes.forEach(function (n) { n.style.animation = ""; });
 }
 
@@ -841,32 +649,32 @@ function closeSuccess() {
   startNewOrder();
 }
 
-// after a submit, clear the pad down for the next order
 function startNewOrder() {
-  state.lines = [];
-  state.ratio = PRESETS.standard.slice();
-  state.boxes = 10;
-  el("boxesInput").value = 10;
-  syncRatioInputs();
-
-  // back to the catalogue, ready for the next order
-  el("catalogueSection").hidden = false;
-  el("pickedSection").hidden = true;
-  el("ratioSection").hidden = true;
-  el("qtySection").hidden = true;
-
-  renderOrderList();
-  renderAll();
+  state.items = [];
+  state.search = "";
+  el("pickerSearch").value = "";
+  renderPickerList();
+  renderSelected();
+  renderTotals();
   window.scrollTo(0, 0);
 }
 
 document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") closeSuccess();
+  if (e.key === "Escape") {
+    closeSuccess();
+    closePicker();
+  }
 });
 
 // ============================================================
 // READ-ONLY TABS
 // ============================================================
+
+function formatDate(iso) {
+  const p = iso.split("-");
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return parseInt(p[2], 10) + " " + months[parseInt(p[1], 10) - 1] + " " + p[0];
+}
 
 function renderCustomersTab() {
   el("customersBody").innerHTML = CUSTOMERS.map(function (c) {
@@ -881,12 +689,6 @@ function renderCustomersTab() {
   }).join("");
 }
 
-function formatDate(iso) {
-  const p = iso.split("-");
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return parseInt(p[2], 10) + " " + months[parseInt(p[1], 10) - 1] + " " + p[0];
-}
-
 function renderStockTab() {
   let head = "<th>Article</th><th>Colour</th>";
   SIZES.forEach(function (s) { head += "<th>" + s + "</th>"; });
@@ -899,7 +701,7 @@ function renderStockTab() {
       return '<td class="t-strong' + (n < LOW_STOCK_THRESHOLD ? " warn" : "") + '">' +
         groupIndian(n) + "</td>";
     }).join("");
-    return "<tr><td><span class=\"t-name\">" + parts[0] + "</span></td>" +
+    return '<tr><td><span class="t-name">' + parts[0] + "</span></td>" +
       '<td class="muted">' + parts[1] + "</td>" + rows + "</tr>";
   }).join("");
 }
@@ -920,24 +722,14 @@ function renderPaymentsTab() {
 // BOOT
 // ============================================================
 
-function renderAll() {
-  renderCounter();
-  renderPresetState();
-  renderCalc();
-  updateButtons();
-}
-
 renderDate();
 initSound();
 initTabs();
 initCustomers();
-initArticles();
-initCatalogue();
-initRatio();
-initBoxes();
-initOrderList();
-renderOrderList();
+initPicker();
+initSelected();
+renderSelected();
+renderTotals();
 renderCustomersTab();
 renderStockTab();
 renderPaymentsTab();
-renderAll();
