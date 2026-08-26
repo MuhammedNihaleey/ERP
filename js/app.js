@@ -77,6 +77,7 @@ function initCustomers() {
   sel.addEventListener("change", function () {
     state.customer = CUSTOMERS.find(function (c) { return c.id === sel.value; }) || null;
     renderCustomerFigures();
+    renderCredit(orderValue());
   });
 }
 
@@ -118,20 +119,13 @@ function initArticles() {
     artSel.appendChild(o);
   });
 
-  artSel.addEventListener("change", function () {
-    renderColours();
-    renderSwatches();
-    renderProduct();
-    renderCalc();
-  });
-
   el("colourSelect").addEventListener("change", function () {
     renderSwatches();
     renderProduct();
     renderCalc();
   });
 
-  // tapping a colour chip drives the same state as the dropdown
+  // tapping a colour chip drives the same state as the hidden select
   el("swatches").addEventListener("click", function (e) {
     const btn = e.target.closest(".swatch");
     if (!btn) return;
@@ -141,13 +135,13 @@ function initArticles() {
     renderCalc();
   });
 
+  el("changeProduct").addEventListener("click", showCatalogue);
+
   renderColours();
-  renderSwatches();
-  renderProduct();
 }
 
 function currentArticle() {
-  return ARTICLES.find(function (a) { return a.code === el("articleSelect").value; });
+  return getArticle(el("articleSelect").value);
 }
 
 function renderColours() {
@@ -159,6 +153,103 @@ function renderColours() {
     o.value = col;
     o.textContent = col;
     sel.appendChild(o);
+  });
+}
+
+// ============================================================
+// CATALOGUE
+// Browse by category, tap a product, and the ratio builder
+// below opens already set to that article and colour.
+// ============================================================
+
+let activeCategory = "gents";
+
+function initCatalogue() {
+  el("cats").innerHTML = CATEGORIES.map(function (c) {
+    return '<button class="cat' + (c.key === activeCategory ? " is-active" : "") +
+      '" data-cat="' + c.key + '">' + c.label + "</button>";
+  }).join("");
+
+  el("cats").addEventListener("click", function (e) {
+    const btn = e.target.closest(".cat");
+    if (!btn) return;
+    activeCategory = btn.dataset.cat;
+    document.querySelectorAll(".cat").forEach(function (c) {
+      c.classList.toggle("is-active", c.dataset.cat === activeCategory);
+    });
+    renderCatGrid();
+  });
+
+  el("catGrid").addEventListener("click", function (e) {
+    const card = e.target.closest(".card");
+    if (!card) return;
+    // a colour dot on the card picks that colour straight away
+    const dot = e.target.closest(".card-dot");
+    pickProduct(card.dataset.code, dot ? dot.dataset.colour : null);
+  });
+
+  renderCatGrid();
+}
+
+function renderCatGrid() {
+  const list = ARTICLES.filter(function (a) { return a.category === activeCategory; });
+
+  el("catalogueCount").textContent =
+    list.length + (list.length === 1 ? " article" : " articles");
+
+  el("catGrid").innerHTML = list.map(function (a) {
+    const dots = a.colours.map(function (col) {
+      const c = COLOUR_HEX[col] || COLOUR_HEX.Black;
+      return '<span class="card-dot" data-colour="' + col + '" title="' + col +
+        '" style="background:' + c.body + '"></span>';
+    }).join("");
+
+    return '<button type="button" class="card" data-code="' + a.code + '">' +
+      '<span class="card-img">' + chappalSVG(a.code, a.colours[0]) + "</span>" +
+      '<span class="card-body">' +
+        '<span class="card-top">' +
+          '<span class="card-code">' + a.code + "</span>" +
+          '<span class="card-rate num">' + rupees(a.rate) + "</span>" +
+        "</span>" +
+        '<span class="card-name">' + a.name + "</span>" +
+        '<span class="card-dots">' + dots + "</span>" +
+      "</span>" +
+    "</button>";
+  }).join("");
+}
+
+function pickProduct(code, colour) {
+  el("articleSelect").value = code;
+  renderColours();
+
+  const art = getArticle(code);
+  el("colourSelect").value =
+    colour && art.colours.indexOf(colour) !== -1 ? colour : art.colours[0];
+
+  el("catalogueSection").hidden = true;
+  el("pickedSection").hidden = false;
+  el("ratioSection").hidden = false;
+  el("qtySection").hidden = false;
+
+  renderSwatches();
+  renderProduct();
+  renderAll();
+
+  el("pickedSection").scrollIntoView({
+    behavior: reduceMotion ? "auto" : "smooth",
+    block: "start"
+  });
+}
+
+function showCatalogue() {
+  el("catalogueSection").hidden = false;
+  el("pickedSection").hidden = true;
+  el("ratioSection").hidden = true;
+  el("qtySection").hidden = true;
+  renderCatGrid();
+  el("catalogueSection").scrollIntoView({
+    behavior: reduceMotion ? "auto" : "smooth",
+    block: "start"
   });
 }
 
@@ -191,13 +282,30 @@ const FAMILY = {
 
 function strapMarkup(style, c, w) {
   if (style === "band") {
-    // a single band across the forefoot, plus a thin ankle-ish accent
     return '<path d="M21 66c9-11 49-11 58 0" fill="none" stroke="' + c.dark +
         '" stroke-width="' + w + '" stroke-linecap="round"/>' +
       '<path d="M26 78c8-7 40-7 48 0" fill="none" stroke="' + c.dark +
         '" stroke-width="' + (w - 2) + '" stroke-linecap="round" opacity="0.75"/>';
   }
-  // thong: a V from the toe post out to each edge, and the post itself
+
+  if (style === "cross") {
+    // two straps crossing over the instep
+    return '<path d="M23 78C38 70 58 58 74 62" fill="none" stroke="' + c.dark +
+        '" stroke-width="' + w + '" stroke-linecap="round"/>' +
+      '<path d="M77 78C62 70 42 58 26 62" fill="none" stroke="' + c.dark +
+        '" stroke-width="' + w + '" stroke-linecap="round"/>';
+  }
+
+  if (style === "tstrap") {
+    // band across, with a strip running up to the toe post
+    return '<path d="M22 72c10-10 46-10 56 0" fill="none" stroke="' + c.dark +
+        '" stroke-width="' + w + '" stroke-linecap="round"/>' +
+      '<path d="M50 40v30" fill="none" stroke="' + c.dark +
+        '" stroke-width="' + (w - 3) + '" stroke-linecap="round"/>' +
+      '<circle cx="50" cy="38" r="4" fill="' + c.dark + '"/>';
+  }
+
+  // thong: a V from the toe post out to each edge
   return '<path d="M50 44C45 55 38 64 27 71" fill="none" stroke="' + c.dark +
       '" stroke-width="' + w + '" stroke-linecap="round"/>' +
     '<path d="M50 44c5 11 12 20 23 27" fill="none" stroke="' + c.dark +
@@ -208,6 +316,8 @@ function strapMarkup(style, c, w) {
 function chappalSVG(articleCode, colourName) {
   const fam = FAMILY[articleCode.split("-")[0]] || FAMILY.GTS;
   const c = COLOUR_HEX[colourName] || COLOUR_HEX.Black;
+  const meta = getArticle(articleCode);
+  const strap = (meta && meta.style) || fam.strap;
 
   return '<svg class="chappal" viewBox="0 0 100 176" role="img" aria-label="' +
     articleCode + " in " + colourName + '">' +
@@ -221,7 +331,7 @@ function chappalSVG(articleCode, colourName) {
           '" stroke-width="1.6" opacity="0.3"/>' +
         '<path d="M33 124c11 4 23 4 34 0" fill="none" stroke="' + c.dark +
           '" stroke-width="1.6" opacity="0.22"/>' +
-        strapMarkup(fam.strap, c, fam.width) +
+        strapMarkup(strap, c, fam.width) +
         // highlight down the left of the footbed
         '<path class="ch-shine" d="M28 52c1-14 8-24 17-28" fill="none" stroke="' +
           c.light + '" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>' +
@@ -237,6 +347,7 @@ function renderProduct() {
   box.innerHTML = chappalSVG(art.code, colour);
   el("productCode").textContent = art.code;
   el("productName").textContent = art.name + " · " + colour;
+  el("productRate").textContent = rupees(art.rate);
 
   // re-trigger the swap animation
   box.classList.remove("is-swapping");
@@ -421,6 +532,12 @@ function renderCalc() {
   el("calcFormula").innerHTML =
     (boxes || 0) + " boxes × " + PAIRS_PER_BOX + " pairs";
 
+  const art = currentArticle();
+  const linePairs = boxes * PAIRS_PER_BOX;
+  el("calcLineValue").textContent = rupees(linePairs * art.rate);
+  el("calcRateFormula").textContent =
+    groupIndian(linePairs) + " pairs × " + rupees(art.rate);
+
   // header
   let head = "<th>Size</th>";
   SIZES.forEach(function (s) { head += "<th>" + s + "</th>"; });
@@ -482,7 +599,9 @@ function initOrderList() {
       colour: el("colourSelect").value,
       boxes: state.boxes,
       ratio: state.ratio.slice(),
-      pairs: state.boxes * PAIRS_PER_BOX
+      pairs: state.boxes * PAIRS_PER_BOX,
+      rate: art.rate,
+      value: state.boxes * PAIRS_PER_BOX * art.rate
     });
     el("confirmMsg").hidden = true;
     renderOrderList();
@@ -544,14 +663,56 @@ function renderOrderList() {
       '<td style="text-align:left" class="ratio-chip">' + l.ratio.join("-") + "</td>" +
       '<td class="t-strong">' + l.boxes + "</td>" +
       '<td class="t-strong">' + groupIndian(l.pairs) + "</td>" +
+      '<td class="t-strong">' + rupees(l.value) + "</td>" +
       '<td><button class="linkbtn" data-remove="' + l.id + '">Remove</button></td>' +
       "</tr>";
   }).join("");
 
   const boxes = state.lines.reduce(function (a, l) { return a + l.boxes; }, 0);
   const pairs = state.lines.reduce(function (a, l) { return a + l.pairs; }, 0);
+  const value = orderValue();
+
   el("totalBoxes").textContent = groupIndian(boxes);
   el("totalPairs").textContent = groupIndian(pairs);
+  el("totalValue").textContent = rupees(value);
+
+  renderCredit(value);
+}
+
+function orderValue() {
+  return state.lines.reduce(function (a, l) { return a + l.value; }, 0);
+}
+
+// Does this order still fit inside what the dealer is allowed to owe?
+function renderCredit(value) {
+  const c = state.customer;
+  const box = el("creditBox");
+
+  if (!c || state.lines.length === 0) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+
+  const headroom = c.creditLimit - c.outstanding - value;
+
+  el("crLimit").textContent = rupees(c.creditLimit);
+  el("crOut").textContent = "− " + rupees(c.outstanding);
+  el("crOrder").textContent = "− " + rupees(value);
+  el("crHeadroom").textContent =
+    (headroom < 0 ? "− " : "") + rupees(Math.abs(headroom));
+
+  const over = headroom < 0;
+  el("crHeadroom").classList.toggle("warn", over);
+  el("crHeadroomRow").classList.toggle("is-over", over);
+
+  const flag = el("crFlag");
+  flag.hidden = !over;
+  if (over) {
+    flag.textContent =
+      "Exceeds credit limit by " + rupees(Math.abs(headroom)) +
+      " — order will be held for office approval.";
+  }
 }
 
 function updateButtons() {
@@ -649,7 +810,14 @@ function showSuccess(orderNo, lineCount, boxes, pairs) {
   el("successOrderNo").textContent = orderNo;
   el("successMeta").textContent =
     lineCount + (lineCount === 1 ? " line" : " lines") + " · " +
-    groupIndian(boxes) + " boxes · " + groupIndian(pairs) + " pairs";
+    groupIndian(boxes) + " boxes · " + groupIndian(pairs) + " pairs · " +
+    rupees(orderValue());
+
+  const c = state.customer;
+  const over = c && (c.creditLimit - c.outstanding - orderValue()) < 0;
+  el("successSub").textContent = over
+    ? "Held for credit approval at office"
+    : "Sent to office for approval";
 
   const overlay = el("successOverlay");
   overlay.hidden = false;
@@ -680,6 +848,13 @@ function startNewOrder() {
   state.boxes = 10;
   el("boxesInput").value = 10;
   syncRatioInputs();
+
+  // back to the catalogue, ready for the next order
+  el("catalogueSection").hidden = false;
+  el("pickedSection").hidden = true;
+  el("ratioSection").hidden = true;
+  el("qtySection").hidden = true;
+
   renderOrderList();
   renderAll();
   window.scrollTo(0, 0);
@@ -757,6 +932,7 @@ initSound();
 initTabs();
 initCustomers();
 initArticles();
+initCatalogue();
 initRatio();
 initBoxes();
 initOrderList();

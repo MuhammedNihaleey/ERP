@@ -12,6 +12,12 @@ const PRESETS = {
   small: [6, 7, 5, 4, 2]
 };
 
+const CATEGORIES = [
+  { key: "gents", label: "Gents", prefix: "GTS" },
+  { key: "ladies", label: "Ladies", prefix: "LDS" },
+  { key: "kids", label: "Kids", prefix: "KID" }
+];
+
 const CUSTOMERS = [
   {
     id: "c1",
@@ -69,13 +75,25 @@ const CUSTOMERS = [
   }
 ];
 
+// rate = dealer rate per pair, in rupees. A box is 24 pairs.
 const ARTICLES = [
-  { code: "GTS-4501", name: "Gents Slipper 4501", colours: ["Black", "Brown", "Blue"] },
-  { code: "GTS-4502", name: "Gents Slipper 4502", colours: ["Black", "Brown"] },
-  { code: "LDS-2201", name: "Ladies Slipper 2201", colours: ["Black", "Brown", "Blue"] },
-  { code: "LDS-2208", name: "Ladies Slipper 2208", colours: ["Brown", "Blue"] },
-  { code: "KID-1102", name: "Kids Slipper 1102", colours: ["Black", "Blue"] },
-  { code: "GTS-4610", name: "Gents Slipper 4610", colours: ["Black", "Brown", "Blue"] }
+  // ---------- gents ----------
+  { code: "GTS-4501", style: "thong", name: "Gents Daily Slipper", category: "gents", rate: 185, colours: ["Black", "Brown", "Blue"] },
+  { code: "GTS-4502", style: "band", name: "Gents Casual Slipper", category: "gents", rate: 210, colours: ["Black", "Brown"] },
+  { code: "GTS-4610", style: "cross", name: "Gents Comfort Slipper", category: "gents", rate: 245, colours: ["Black", "Brown", "Blue"] },
+  { code: "GTS-4705", style: "thong", name: "Gents Economy Slipper", category: "gents", rate: 165, colours: ["Black", "Blue"] },
+  { code: "GTS-4820", style: "tstrap", name: "Gents Premium Slipper", category: "gents", rate: 295, colours: ["Black", "Brown"] },
+
+  // ---------- ladies ----------
+  { code: "LDS-2201", style: "band", name: "Ladies Daily Slipper", category: "ladies", rate: 165, colours: ["Black", "Brown", "Blue"] },
+  { code: "LDS-2208", style: "cross", name: "Ladies Fancy Slipper", category: "ladies", rate: 175, colours: ["Brown", "Blue"] },
+  { code: "LDS-2310", style: "tstrap", name: "Ladies Comfort Slipper", category: "ladies", rate: 195, colours: ["Black", "Brown"] },
+  { code: "LDS-2415", style: "band", name: "Ladies Premium Slipper", category: "ladies", rate: 225, colours: ["Black", "Blue"] },
+
+  // ---------- kids ----------
+  { code: "KID-1102", style: "thong", name: "Kids School Slipper", category: "kids", rate: 120, colours: ["Black", "Blue"] },
+  { code: "KID-1205", style: "cross", name: "Kids Fancy Slipper", category: "kids", rate: 135, colours: ["Brown", "Blue"] },
+  { code: "KID-1310", style: "band", name: "Kids Sport Slipper", category: "kids", rate: 150, colours: ["Black", "Blue"] }
 ];
 
 // Stock per article+colour, pairs available for each of the five sizes.
@@ -88,20 +106,38 @@ const STOCK = {
   "GTS-4501|Blue": [10, 15, 20, 12, 8],
   "GTS-4502|Black": [200, 180, 160, 90, 70],
   "GTS-4502|Brown": [60, 45, 38, 22, 15],
+  "GTS-4610|Black": [150, 140, 120, 100, 85],
+  "GTS-4610|Brown": [40, 35, 30, 25, 18],
+  "GTS-4610|Blue": [25, 20, 15, 10, 5],
+  "GTS-4705|Black": [210, 190, 175, 120, 95],
+  "GTS-4705|Blue": [65, 58, 44, 30, 22],
+  "GTS-4820|Black": [90, 85, 70, 55, 40],
+  "GTS-4820|Brown": [35, 28, 24, 18, 12],
+
   "LDS-2201|Black": [90, 110, 100, 70, 50],
   "LDS-2201|Brown": [45, 30, 25, 18, 10],
   "LDS-2201|Blue": [70, 65, 60, 40, 35],
   "LDS-2208|Brown": [55, 48, 42, 30, 20],
   "LDS-2208|Blue": [15, 10, 22, 18, 12],
+  "LDS-2310|Black": [130, 115, 95, 75, 55],
+  "LDS-2310|Brown": [50, 42, 36, 28, 20],
+  "LDS-2415|Black": [75, 68, 60, 45, 32],
+  "LDS-2415|Blue": [30, 26, 20, 15, 10],
+
   "KID-1102|Black": [130, 120, 100, 80, 60],
   "KID-1102|Blue": [35, 28, 30, 20, 15],
-  "GTS-4610|Black": [150, 140, 120, 100, 85],
-  "GTS-4610|Brown": [40, 35, 30, 25, 18],
-  "GTS-4610|Blue": [25, 20, 15, 10, 5]
+  "KID-1205|Brown": [95, 88, 72, 55, 38],
+  "KID-1205|Blue": [42, 36, 30, 24, 16],
+  "KID-1310|Black": [160, 145, 130, 105, 80],
+  "KID-1310|Blue": [55, 48, 40, 32, 25]
 };
 
 function getStock(articleCode, colour) {
   return STOCK[articleCode + "|" + colour] || [0, 0, 0, 0, 0];
+}
+
+function getArticle(code) {
+  return ARTICLES.find(function (a) { return a.code === code; });
 }
 
 const PAYMENTS = [

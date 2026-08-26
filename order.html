@@ -59,36 +59,42 @@
       </div>
     </div>
 
-    <!-- 2. ARTICLE -->
-    <div class="section">
+    <!-- 2. CATALOGUE -->
+    <div class="section" id="catalogueSection">
       <div class="section-head">
-        <h2 class="section-title"><span class="step">02</span>Article &amp; colour</h2>
+        <h2 class="section-title"><span class="step">02</span>Choose a product</h2>
+        <span class="hint" id="catalogueCount"></span>
       </div>
-      <div class="article-row">
-        <div class="article-fields">
-          <div>
-            <label class="label" for="articleSelect">Article</label>
-            <select id="articleSelect"></select>
-          </div>
-          <div>
-            <label class="label" for="colourSelect">Colour</label>
-            <select id="colourSelect"></select>
+
+      <nav class="cats" id="cats"></nav>
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+
+    <!-- 2b. SELECTED PRODUCT — shown once one is picked -->
+    <div class="section" id="pickedSection" hidden>
+      <div class="section-head">
+        <h2 class="section-title"><span class="step">02</span>Product</h2>
+        <button class="linkbtn" id="changeProduct">Change product</button>
+      </div>
+
+      <div class="picked">
+        <div class="picked-img" id="productImg"></div>
+        <div class="picked-body">
+          <div class="picked-code" id="productCode"></div>
+          <div class="picked-name" id="productName"></div>
+          <div class="picked-rate">
+            <span class="picked-rate-value num" id="productRate"></span>
+            <span class="picked-rate-unit">per pair</span>
           </div>
           <div class="swatches" id="swatches"></div>
+          <select id="articleSelect" hidden></select>
+          <select id="colourSelect" hidden></select>
         </div>
-
-        <figure class="product">
-          <div class="product-img" id="productImg"></div>
-          <figcaption class="product-cap">
-            <span class="product-code" id="productCode"></span>
-            <span class="product-name" id="productName"></span>
-          </figcaption>
-        </figure>
       </div>
     </div>
 
     <!-- 3. BOX RATIO BUILDER -->
-    <div class="section">
+    <div class="section" id="ratioSection" hidden>
       <div class="section-head">
         <h2 class="section-title"><span class="step">03</span>Box ratio — 24 pairs per box</h2>
       </div>
@@ -106,7 +112,7 @@
     </div>
 
     <!-- 4 + 5. BOXES AND LIVE CALCULATION -->
-    <div class="section">
+    <div class="section" id="qtySection" hidden>
       <div class="section-head">
         <h2 class="section-title"><span class="step">04</span>Quantity</h2>
       </div>
@@ -123,6 +129,12 @@
           <div class="calc-total-value num" id="calcTotalPairs">240</div>
           <div class="calc-total-label">Total pairs</div>
           <div class="calc-total-formula num" id="calcFormula">10 boxes &times; 24 pairs</div>
+        </div>
+
+        <div class="calc-value">
+          <span class="label">Line value</span>
+          <span class="calc-value-amount num" id="calcLineValue">—</span>
+          <span class="calc-value-formula num" id="calcRateFormula"></span>
         </div>
 
         <div class="table-scroll">
@@ -148,7 +160,7 @@
     <!-- 6. ORDER LIST -->
     <div class="section">
       <div class="section-head">
-        <h2 class="section-title"><span class="step">05</span>Order lines</h2>
+        <h2 class="section-title">Order lines</h2>
       </div>
 
       <div id="orderEmpty" class="empty">No lines added yet.</div>
@@ -161,6 +173,7 @@
               <th style="text-align:left">Ratio</th>
               <th>Boxes</th>
               <th>Pairs</th>
+              <th>Value</th>
               <th></th>
             </tr>
           </thead>
@@ -175,8 +188,28 @@
         </div>
         <div class="foot-fig">
           <span class="label">Total pairs</span>
-          <div class="foot-fig-value num accent" id="totalPairs">0</div>
+          <div class="foot-fig-value num" id="totalPairs">0</div>
         </div>
+        <div class="foot-fig">
+          <span class="label">Order value</span>
+          <div class="foot-fig-value num accent" id="totalValue">₹0</div>
+        </div>
+      </div>
+
+      <div class="credit" id="creditBox" hidden>
+        <div class="credit-row">
+          <span>Credit limit</span><span class="num" id="crLimit"></span>
+        </div>
+        <div class="credit-row">
+          <span>Less outstanding</span><span class="num" id="crOut"></span>
+        </div>
+        <div class="credit-row">
+          <span>Less this order</span><span class="num" id="crOrder"></span>
+        </div>
+        <div class="credit-row credit-total" id="crHeadroomRow">
+          <span>Credit remaining</span><span class="num" id="crHeadroom"></span>
+        </div>
+        <p class="credit-flag" id="crFlag" hidden></p>
       </div>
 
       <div class="submit-row">
@@ -259,7 +292,7 @@
       <path class="success-tick" d="M38 61 L53 76 L83 46"></path>
     </svg>
     <h2 class="success-title">Order placed</h2>
-    <p class="success-sub">Sent to office for approval</p>
+    <p class="success-sub" id="successSub">Sent to office for approval</p>
     <div class="success-order" id="successOrderNo">SO-2451</div>
     <div class="success-meta" id="successMeta"></div>
     <button class="btn success-done" id="successDone">Done</button>
