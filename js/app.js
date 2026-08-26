@@ -12,8 +12,23 @@ const BOX_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50];
 const RATIO_SETS = [
   { key: "standard", label: "Standard" },
   { key: "large", label: "Large mix" },
-  { key: "small", label: "Small mix" }
+  { key: "small", label: "Small mix" },
+  { key: "custom", label: "Custom…" }
 ];
+
+// the ratio actually in force for a row: a named set, or its own custom split
+function ratioFor(item) {
+  return item.preset === "custom" ? item.custom : PRESETS[item.preset];
+}
+
+function ratioTotal(item) {
+  return ratioFor(item).reduce(function (a, b) { return a + b; }, 0);
+}
+
+// a custom split that doesn't add up to a full box blocks submission
+function itemValid(item) {
+  return ratioTotal(item) === PAIRS_PER_BOX;
+}
 
 // ---------- helpers ----------
 
@@ -328,7 +343,24 @@ function initSelected() {
     if (!item) return;
 
     const key = field.dataset.field;
+
+    if (key === "custom") {
+      const v = parseInt(field.value, 10);
+      item.custom[+field.dataset.i] =
+        isNaN(v) ? 0 : Math.max(0, Math.min(PAIRS_PER_BOX, v));
+      refreshCustom(item);
+      updateRowFigures(item);
+      renderTotals();
+      return;
+    }
+
     item[key] = key === "boxes" ? parseInt(field.value, 10) : field.value;
+
+    if (key === "preset") {
+      const row = field.closest(".sel");
+      row.querySelector(".sel-custom").hidden = item.preset !== "custom";
+      refreshCustom(item);
+    }
 
     if (key === "colour") {
       const img = el("selList").querySelector('[data-img="' + item.id + '"]');
@@ -338,6 +370,22 @@ function initSelected() {
       }
     }
 
+    updateRowFigures(item);
+    renderTotals();
+  });
+
+  el("selList").addEventListener("input", function (e) {
+    const field = e.target.closest('[data-field="custom"]');
+    if (!field) return;
+    const item = state.items.find(function (i) {
+      return String(i.id) === field.dataset.id;
+    });
+    if (!item) return;
+
+    const v = parseInt(field.value, 10);
+    item.custom[+field.dataset.i] =
+      isNaN(v) ? 0 : Math.max(0, Math.min(PAIRS_PER_BOX, v));
+    refreshCustom(item);
     updateRowFigures(item);
     renderTotals();
   });
@@ -377,6 +425,7 @@ function addItem(code, colour) {
     code: code,
     colour: colour && art.colours.indexOf(colour) !== -1 ? colour : art.colours[0],
     preset: "standard",
+    custom: PRESETS.standard.slice(),
     boxes: 10
   });
 
@@ -390,7 +439,7 @@ function addItem(code, colour) {
 }
 
 function itemPairs(item) {
-  return item.boxes * PAIRS_PER_BOX;
+  return item.boxes * ratioTotal(item);
 }
 
 function itemValue(item) {
@@ -415,8 +464,17 @@ function renderSelected() {
 
     const sizeOpts = RATIO_SETS.map(function (r) {
       return '<option value="' + r.key + '"' +
-        (r.key === it.preset ? " selected" : "") + ">" +
-        r.label + " · " + PRESETS[r.key].join("-") + "</option>";
+        (r.key === it.preset ? " selected" : "") + ">" + r.label + "</option>";
+    }).join("");
+
+    // five small inputs, shown only while this row is on Custom
+    const customCells = SIZES.map(function (size, i) {
+      return '<label class="cust-cell">' +
+        '<span class="cust-size">' + size + "</span>" +
+        '<input class="cust-input num" type="number" min="0" max="24" ' +
+          'data-field="custom" data-id="' + it.id + '" data-i="' + i + '" ' +
+          'value="' + it.custom[i] + '">' +
+      "</label>";
     }).join("");
 
     const boxOpts = BOX_OPTIONS.map(function (n) {
@@ -425,7 +483,10 @@ function renderSelected() {
         (n === 1 ? " box" : " boxes") + "</option>";
     }).join("");
 
-    return '<div class="sel row-in">' +
+    const valid = itemValid(it);
+    const total = ratioTotal(it);
+
+    return '<div class="sel row-in' + (valid ? "" : " is-invalid") + '">' +
       '<div class="sel-img" data-img="' + it.id + '">' +
         chappalSVG(it.code, it.colour) +
       "</div>" +
@@ -458,10 +519,29 @@ function renderSelected() {
 
       '<button class="sel-x" data-remove="' + it.id + '" aria-label="Remove ' +
         it.code + '">&times;</button>' +
+
+      '<div class="sel-custom"' + (it.preset === "custom" ? "" : " hidden") + '>' +
+        '<div class="cust-grid">' + customCells + "</div>" +
+        '<div class="cust-total' + (valid ? "" : " warn") + '" data-cust="' + it.id + '">' +
+          total + " of " + PAIRS_PER_BOX + " pairs assigned" +
+        "</div>" +
+      "</div>" +
     "</div>";
   }).join("");
 
   state.items.forEach(updateRowFigures);
+}
+
+function refreshCustom(item) {
+  const node = el("selList").querySelector('[data-cust="' + item.id + '"]');
+  if (!node) return;
+
+  const total = ratioTotal(item);
+  const ok = itemValid(item);
+
+  node.textContent = total + " of " + PAIRS_PER_BOX + " pairs assigned";
+  node.classList.toggle("warn", !ok);
+  node.closest(".sel").classList.toggle("is-invalid", !ok);
 }
 
 function updateRowFigures(item) {
@@ -469,7 +549,8 @@ function updateRowFigures(item) {
   const v = el("selList").querySelector('[data-value="' + item.id + '"]');
   if (!p || !v) return;
 
-  p.textContent = groupIndian(itemPairs(item)) + " pairs";
+  p.textContent = ratioFor(item).join("-") + " · " +
+    groupIndian(itemPairs(item)) + " pairs";
   v.textContent = rupees(itemValue(item));
   flash(v, "bump");
 }
@@ -492,7 +573,13 @@ function renderTotals() {
   el("sumValue").textContent = rupees(value);
   flash(el("sumValue"), "pop");
 
-  el("submitBtn").disabled = state.items.length === 0;
+  const allValid = state.items.every(itemValid);
+  el("submitBtn").disabled = state.items.length === 0 || !allValid;
+
+  const hint = el("submitHint");
+  hint.hidden = allValid || state.items.length === 0;
+  hint.textContent = "One item's custom ratio doesn't add up to 24 pairs.";
+
   renderCredit(value);
 }
 

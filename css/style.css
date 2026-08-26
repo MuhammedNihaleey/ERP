@@ -671,6 +671,7 @@ main {
 
 .sel {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
   padding: 14px 16px;
@@ -770,6 +771,64 @@ main {
   color: var(--accent);
   border-color: var(--accent);
 }
+
+/* ---------- custom size ratio ---------- */
+
+.sel-custom {
+  flex-basis: 100%;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  animation: panelIn 0.2s var(--ease) both;
+}
+
+.cust-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 84px));
+  gap: 8px;
+}
+
+.cust-cell { display: block; }
+
+.cust-size {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cust-input {
+  width: 100%;
+  padding: 7px 8px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cust-input::-webkit-outer-spin-button,
+.cust-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.cust-input[type="number"] { -moz-appearance: textfield; }
+
+.cust-total {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sel.is-invalid {
+  border-left-color: var(--warning);
+}
+
+.sel-custom[hidden] { display: none; }
 
 /* ---------- order summary ---------- */
 
@@ -1313,43 +1372,75 @@ tbody tr:last-child td {
   .picker { max-width: none; }
   .picker-list { max-height: 60vh; }
 
-  /* selected item: image + name on top, the three dropdowns beneath */
+  /* Selected item collapses to one compact row: the three selectors become
+     small value+arrow controls rather than stacked labelled dropdowns. */
   .sel {
     display: grid;
-    grid-template-columns: 40px 1fr auto;
+    grid-template-columns: 34px 1fr auto;
     grid-template-areas:
       "img main x"
       "ctl ctl ctl"
-      "fig fig fig";
-    align-items: start;
-    gap: 12px;
-    padding: 14px;
+      "fig fig fig"
+      "cst cst cst";
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
   }
 
-  .sel-img  { grid-area: img; }
+  .sel-img  { grid-area: img; height: 44px; flex: none; }
   .sel-main { grid-area: main; }
   .sel-x    { grid-area: x; }
+  .sel-custom { grid-area: cst; margin-top: 0; }
+
+  .sel-code { font-size: 14px; }
+  .sel-name { font-size: 11px; }
+  .sel-rate { display: none; }
 
   .sel-controls {
     grid-area: ctl;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    display: flex;
+    gap: 6px;
   }
 
-  .sel-ctl-wide { grid-column: 1 / -1; }
-  .sel-ctl select { min-width: 0; width: 100%; }
+  /* labels off — the value plus its arrow is the whole control */
+  .sel-ctl .label { display: none; }
+
+  .sel-ctl {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .sel-ctl select {
+    width: 100%;
+    min-width: 0;
+    padding: 7px 22px 7px 8px;
+    font-size: 12px;
+    background-position: right 7px center;
+    text-overflow: ellipsis;
+  }
 
   .sel-figs {
     grid-area: fig;
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     text-align: left;
-    padding-top: 10px;
+    min-width: 0;
+    padding-top: 8px;
     border-top: 1px solid var(--border);
   }
+
+  .sel-pairs { font-size: 11px; }
+  .sel-value { font-size: 16px; }
+
+  .cust-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .cust-input { padding: 6px 2px; font-size: 14px; }
+  .cust-size { font-size: 9px; letter-spacing: 0.04em; }
 
   .sum,
   .credit {
