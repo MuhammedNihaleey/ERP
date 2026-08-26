@@ -236,6 +236,22 @@
 
 </main>
 
+<!-- ORDER PLACED — animated confirmation -->
+<div class="success-overlay" id="successOverlay" hidden>
+  <div class="success-card">
+    <svg class="success-mark" viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="success-ring" cx="60" cy="60" r="54"></circle>
+      <circle class="success-disc" cx="60" cy="60" r="54"></circle>
+      <path class="success-tick" d="M38 61 L53 76 L83 46"></path>
+    </svg>
+    <h2 class="success-title">Order placed</h2>
+    <p class="success-sub">Sent to office for approval</p>
+    <div class="success-order" id="successOrderNo">SO-2451</div>
+    <div class="success-meta" id="successMeta"></div>
+    <button class="btn success-done" id="successDone">Done</button>
+  </div>
+</div>
+
 <script src="js/data.js"></script>
 <script src="js/app.js"></script>
 </body>

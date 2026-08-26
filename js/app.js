@@ -332,12 +332,22 @@ function initOrderList() {
   });
 
   el("submitBtn").addEventListener("click", function () {
+    const orderNo = "SO-" + nextOrderNumber;
+    nextOrderNumber++;
+
+    const boxes = state.lines.reduce(function (a, l) { return a + l.boxes; }, 0);
+    const pairs = state.lines.reduce(function (a, l) { return a + l.pairs; }, 0);
+
+    // inline record, left on the page once the overlay is dismissed
     const msg = el("confirmMsg");
     msg.textContent =
-      "Order sent to office for approval — Order no. SO-" + nextOrderNumber;
+      "Order sent to office for approval — Order no. " + orderNo;
     msg.hidden = false;
-    nextOrderNumber++;
+
+    showSuccess(orderNo, state.lines.length, boxes, pairs);
   });
+
+  el("successDone").addEventListener("click", closeSuccess);
 }
 
 function renderOrderList() {
@@ -375,6 +385,53 @@ function updateButtons() {
 
   el("submitBtn").disabled = state.lines.length === 0;
 }
+
+// ============================================================
+// ORDER PLACED — animated confirmation
+// ============================================================
+
+function showSuccess(orderNo, lineCount, boxes, pairs) {
+  el("successOrderNo").textContent = orderNo;
+  el("successMeta").textContent =
+    lineCount + (lineCount === 1 ? " line" : " lines") + " · " +
+    groupIndian(boxes) + " boxes · " + groupIndian(pairs) + " pairs";
+
+  const overlay = el("successOverlay");
+  overlay.hidden = false;
+  restartAnimations(overlay);
+  el("successDone").focus();
+}
+
+// CSS animations only fire once, so reset them to replay the tick
+// every time an order is placed — not just the first.
+function restartAnimations(root) {
+  const nodes = [root].concat(Array.prototype.slice.call(root.querySelectorAll("*")));
+  nodes.forEach(function (n) { n.style.animation = "none"; });
+  void root.offsetWidth; // force reflow
+  nodes.forEach(function (n) { n.style.animation = ""; });
+}
+
+function closeSuccess() {
+  if (el("successOverlay").hidden) return;
+  el("successOverlay").hidden = true;
+  startNewOrder();
+}
+
+// after a submit, clear the pad down for the next order
+function startNewOrder() {
+  state.lines = [];
+  state.ratio = PRESETS.standard.slice();
+  state.boxes = 10;
+  el("boxesInput").value = 10;
+  syncRatioInputs();
+  renderOrderList();
+  renderAll();
+  window.scrollTo(0, 0);
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") closeSuccess();
+});
 
 // ============================================================
 // READ-ONLY TABS

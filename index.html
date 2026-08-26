@@ -41,8 +41,12 @@
         <input type="password" id="password" autocomplete="off" value="demo">
       </div>
 
-      <button type="submit" class="btn btn-block">Sign in</button>
+      <button type="submit" class="btn btn-block">Login</button>
     </form>
+
+    <p class="login-alt">
+      New user? <a href="#" id="signupLink">Sign up</a>
+    </p>
 
     <p class="login-foot">Demo version</p>
 
@@ -53,6 +57,11 @@
   document.getElementById('loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
     window.location.href = 'order.html';
+  });
+
+  // Dummy link for the demo — sign-up is not part of the prototype.
+  document.getElementById('signupLink').addEventListener('click', function (e) {
+    e.preventDefault();
   });
 </script>
 
