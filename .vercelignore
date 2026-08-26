@@ -1,0 +1,6 @@
+# macOS cruft
+.DS_Store
+
+# Offline single-file copies — not needed for a hosted deploy, and they
+# would go stale against the real source files in css/ and js/.
+standalone/

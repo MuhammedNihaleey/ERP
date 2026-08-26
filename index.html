@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sample Footwear — Sign in</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%226%22%20fill%3D%22%232F5D50%22%2F%3E%3Ctext%20x%3D%2216%22%20y%3D%2222%22%20font-family%3D%22Helvetica%2CArial%2Csans-serif%22%20font-size%3D%2214%22%20font-weight%3D%22bold%22%20fill%3D%22%23FFFDF8%22%20text-anchor%3D%22middle%22%3ESF%3C%2Ftext%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-card">
+
+    <h1 class="brand">Sample Footwear</h1>
+    <p class="brand-sub">Manufacturing ERP</p>
+
+    <hr class="login-rule">
+
+    <form id="loginForm" novalidate>
+      <div class="field">
+        <label class="label" for="role">Role</label>
+        <select id="role">
+          <option>Super Admin</option>
+          <option>Office</option>
+          <option selected>Salesman</option>
+          <option>Production</option>
+          <option>Godown</option>
+          <option>HR</option>
+          <option>Accounts</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="label" for="userid">User ID</label>
+        <input type="text" id="userid" autocomplete="off" value="rajesh.k">
+      </div>
+
+      <div class="field">
+        <label class="label" for="password">Password</label>
+        <input type="password" id="password" autocomplete="off" value="demo">
+      </div>
+
+      <button type="submit" class="btn btn-block">Sign in</button>
+    </form>
+
+    <p class="login-foot">Demo version</p>
+
+  </div>
+</div>
+
+<script>
+  document.getElementById('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    window.location.href = 'order.html';
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sample Footwear — New Order</title>
+<style>
+/* ============================================================
+   SAMPLE FOOTWEAR ERP — stylesheet
+   Minimal, warm, off-white. Hairline rules, no shadows.
+   ============================================================ */
+
+:root {
+  --bg: #F7F5F0;
+  --surface: #FFFDF8;
+  --text: #1F1E1C;
+  --muted: #7A776F;
+  --border: #E2DED4;
+  --accent: #2F5D50;
+  --accent-soft: #EDF1EF;
+  --warning: #B4552D;
+  --warning-soft: #F7EDE7;
+
+  --radius: 4px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* keep the hidden attribute authoritative over any display: rule below */
+[hidden] {
+  display: none !important;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- shared type ---------- */
+
+.label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.warn {
+  color: var(--warning);
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ---------- form controls ---------- */
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select {
+  width: 100%;
+  padding: 11px 12px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent);
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237A776F' stroke-width='1.4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 22px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--accent);
+  color: #FFFDF8;
+  border: 1px solid var(--accent);
+}
+
+.btn:hover {
+  background: #274E43;
+}
+
+.btn:disabled {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 12px 22px;
+  font-weight: 600;
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+
+.login-wrap {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+}
+
+.brand {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.brand-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 6px 0 0;
+}
+
+.login-rule {
+  height: 1px;
+  background: var(--border);
+  border: 0;
+  margin: 28px 0;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.login-foot {
+  margin-top: 28px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+
+.topbar {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.topbar-inner {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.topbar-user {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.topbar-user span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.topbar-date {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.tabs {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  gap: 28px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tabs-wrap {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 12px 0 10px;
+  margin-bottom: -1px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  border-radius: 0;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+main {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+/* ---------- sections ---------- */
+
+.section {
+  padding: 28px 0;
+  border-top: 1px solid var(--border);
+}
+
+.section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.step {
+  display: inline-block;
+  min-width: 18px;
+  margin-right: 8px;
+  color: var(--border);
+  font-weight: 700;
+}
+
+/* ---------- customer figures ---------- */
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 18px;
+  overflow: hidden;
+}
+
+.figure {
+  background: var(--surface);
+  padding: 16px 18px;
+}
+
+.figure .label {
+  margin-bottom: 6px;
+}
+
+.figure-value {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.figure-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ---------- two-column grid ---------- */
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* ---------- ratio builder ---------- */
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.preset {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  text-align: left;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.preset:hover {
+  border-color: var(--accent);
+}
+
+.preset.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.preset strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.preset em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.preset.is-active em {
+  color: var(--accent);
+}
+
+.ratio {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ratio-col {
+  background: var(--surface);
+  padding: 16px 12px;
+  text-align: center;
+}
+
+.ratio-size {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.step-btn {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
+
+.step-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ratio-input {
+  width: 52px;
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  border: 0;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+.ratio-input::-webkit-outer-spin-button,
+.ratio-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ratio-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.ratio-stock {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-top: 12px;
+}
+
+.counter {
+  margin-top: 20px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.counter small {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ---------- calculation panel ---------- */
+
+.calc {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 22px;
+}
+
+.calc-total {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.calc-total-value {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.calc-total-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.calc-total-formula {
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- tables ---------- */
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: right;
+  padding: 0 12px 10px 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+  padding-left: 0;
+}
+
+th:last-child,
+td:last-child {
+  padding-right: 0;
+}
+
+td {
+  text-align: right;
+  padding: 12px 12px 12px 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.t-row-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.t-strong {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.t-lg {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.t-name {
+  font-weight: 600;
+}
+
+.t-sub {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.t-total-row td {
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+  padding-top: 14px;
+}
+
+.stock-tag {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* ---------- order lines ---------- */
+
+.linkbtn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.linkbtn:hover {
+  color: var(--warning);
+}
+
+.ratio-chip {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  padding: 22px 0;
+  color: var(--muted);
+  font-size: 14px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.order-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 28px;
+  padding-top: 20px;
+  flex-wrap: wrap;
+}
+
+.foot-fig .label {
+  margin-bottom: 4px;
+  text-align: right;
+}
+
+.foot-fig-value {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.submit-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+  margin-top: 28px;
+}
+
+.confirm {
+  font-size: 14px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid #D4DEDA;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  flex: 1 1 260px;
+}
+
+.confirm[hidden] {
+  display: none;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 720px) {
+  main {
+    padding: 24px 18px 64px;
+  }
+
+  .topbar-inner {
+    padding: 14px 18px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .tabs {
+    padding: 0 18px;
+    gap: 16px;
+  }
+
+  .tab {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .figures {
+    grid-template-columns: 1fr;
+  }
+
+  .figure {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 12px;
+    padding: 14px 16px;
+  }
+
+  .figure .label {
+    margin-bottom: 0;
+  }
+
+  .figure-value {
+    font-size: 20px;
+  }
+
+  /* keep the note on its own line instead of crowding the figure */
+  .figure-note {
+    flex-basis: 100%;
+    text-align: right;
+    margin-top: 0;
+  }
+
+  .ratio {
+    grid-template-columns: 1fr;
+  }
+
+  .ratio-col {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px 14px;
+    text-align: left;
+  }
+
+  .ratio-size {
+    margin-bottom: 0;
+  }
+
+  .stepper {
+    justify-content: flex-end;
+  }
+
+  .ratio-stock {
+    margin-top: 0;
+    grid-column: 1 / -1;
+  }
+
+  .presets {
+    gap: 6px;
+  }
+
+  .preset {
+    flex: 1 1 calc(50% - 3px);
+  }
+
+  .calc {
+    padding: 18px 16px;
+  }
+
+  .calc-total-value {
+    font-size: 32px;
+  }
+
+  .calc-total-formula {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+
+  .order-foot {
+    justify-content: space-between;
+  }
+
+  .submit-row .btn {
+    width: 100%;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-user">Salesman <span>— Rajesh K</span></div>
+    <div class="topbar-date" id="todayDate"></div>
+  </div>
+</header>
+
+<div class="tabs-wrap">
+  <nav class="tabs" id="tabs">
+    <button class="tab is-active" data-tab="order">New Order</button>
+    <button class="tab" data-tab="customers">My Customers</button>
+    <button class="tab" data-tab="stock">Stock</button>
+    <button class="tab" data-tab="payments">Payments</button>
+  </nav>
+</div>
+
+<main>
+
+  <!-- ================= NEW ORDER ================= -->
+  <section class="panel" id="panel-order">
+
+    <!-- 1. CUSTOMER -->
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title"><span class="step">01</span>Customer</h2>
+      </div>
+      <select id="customerSelect">
+        <option value="">Select a dealer</option>
+      </select>
+
+      <div class="figures" id="customerFigures" hidden>
+        <div class="figure">
+          <span class="label">Credit limit</span>
+          <div class="figure-value num" id="figCredit">—</div>
+        </div>
+        <div class="figure">
+          <span class="label">Outstanding</span>
+          <div class="figure-value num" id="figOutstanding">—</div>
+          <div class="figure-note" id="figOutstandingNote"></div>
+        </div>
+        <div class="figure">
+          <span class="label">Overdue</span>
+          <div class="figure-value num" id="figOverdue">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. ARTICLE -->
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title"><span class="step">02</span>Article &amp; colour</h2>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="label" for="articleSelect">Article</label>
+          <select id="articleSelect"></select>
+        </div>
+        <div>
+          <label class="label" for="colourSelect">Colour</label>
+          <select id="colourSelect"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. BOX RATIO BUILDER -->
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title"><span class="step">03</span>Box ratio — 24 pairs per box</h2>
+      </div>
+
+      <div class="presets" id="presets">
+        <button class="preset" data-preset="standard"><strong>Standard</strong><em>4 - 5 - 6 - 5 - 4</em></button>
+        <button class="preset" data-preset="large"><strong>Large mix</strong><em>2 - 4 - 6 - 7 - 5</em></button>
+        <button class="preset" data-preset="small"><strong>Small mix</strong><em>6 - 7 - 5 - 4 - 2</em></button>
+        <button class="preset" data-preset="custom"><strong>Custom</strong><em>Clear all</em></button>
+      </div>
+
+      <div class="ratio" id="ratioGrid"></div>
+
+      <div class="counter" id="counter"></div>
+    </div>
+
+    <!-- 4 + 5. BOXES AND LIVE CALCULATION -->
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title"><span class="step">04</span>Quantity</h2>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:24px">
+        <div>
+          <label class="label" for="boxesInput">Number of boxes</label>
+          <input type="number" id="boxesInput" min="1" step="1" value="10">
+        </div>
+      </div>
+
+      <div class="calc">
+        <div class="calc-total">
+          <div class="calc-total-value num" id="calcTotalPairs">240</div>
+          <div class="calc-total-label">Total pairs</div>
+          <div class="calc-total-formula num" id="calcFormula">10 boxes &times; 24 pairs</div>
+        </div>
+
+        <div class="table-scroll">
+          <table id="calcTable">
+            <thead>
+              <tr id="calcHead"></tr>
+            </thead>
+            <tbody>
+              <tr id="calcPerBox"></tr>
+              <tr id="calcOrdered"></tr>
+              <tr id="calcStock"></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="margin-top:22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <button class="btn" id="addLineBtn" disabled>Add to order</button>
+        <span class="hint" id="addHint">Assign all 24 pairs to enable</span>
+      </div>
+    </div>
+
+    <!-- 6. ORDER LIST -->
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title"><span class="step">05</span>Order lines</h2>
+      </div>
+
+      <div id="orderEmpty" class="empty">No lines added yet.</div>
+
+      <div class="table-scroll" id="orderTableWrap" hidden>
+        <table>
+          <thead>
+            <tr>
+              <th>Article</th>
+              <th style="text-align:left">Ratio</th>
+              <th>Boxes</th>
+              <th>Pairs</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="orderBody"></tbody>
+        </table>
+      </div>
+
+      <div class="order-foot" id="orderFoot" hidden>
+        <div class="foot-fig">
+          <span class="label">Total boxes</span>
+          <div class="foot-fig-value num" id="totalBoxes">0</div>
+        </div>
+        <div class="foot-fig">
+          <span class="label">Total pairs</span>
+          <div class="foot-fig-value num accent" id="totalPairs">0</div>
+        </div>
+      </div>
+
+      <div class="submit-row">
+        <button class="btn" id="submitBtn" disabled>Submit order</button>
+        <div class="confirm" id="confirmMsg" hidden></div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ================= MY CUSTOMERS ================= -->
+  <section class="panel" id="panel-customers" hidden>
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">My customers</h2>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Dealer</th>
+              <th>Credit limit</th>
+              <th>Outstanding</th>
+              <th>Last order</th>
+            </tr>
+          </thead>
+          <tbody id="customersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STOCK ================= -->
+  <section class="panel" id="panel-stock" hidden>
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Godown stock — pairs available</h2>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr id="stockHead"></tr>
+          </thead>
+          <tbody id="stockBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PAYMENTS ================= -->
+  <section class="panel" id="panel-payments" hidden>
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Outstanding payments</h2>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Invoice</th>
+              <th>Amount</th>
+              <th>Overdue</th>
+            </tr>
+          </thead>
+          <tbody id="paymentsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ============================================================
+// SAMPLE FOOTWEAR ERP — DUMMY DATA
+// All hardcoded for demo purposes. Edit this file to change
+// any figures shown across the prototype.
+// ============================================================
+
+const SIZES = ["6-7", "7-8", "8-9", "9-10", "10-11"];
+
+const PRESETS = {
+  standard: [4, 5, 6, 5, 4],
+  large: [2, 4, 6, 7, 5],
+  small: [6, 7, 5, 4, 2]
+};
+
+const CUSTOMERS = [
+  {
+    id: "c1",
+    name: "Malabar Footwear Traders",
+    place: "Kozhikode",
+    creditLimit: 500000,
+    outstanding: 142500,
+    overdueDays: 18,
+    lastOrder: "2026-08-14"
+  },
+  {
+    id: "c2",
+    name: "Kochin Shoe Palace",
+    place: "Ernakulam",
+    creditLimit: 350000,
+    outstanding: 268000,
+    overdueDays: 42,
+    lastOrder: "2026-07-29"
+  },
+  {
+    id: "c3",
+    name: "St. Thomas Footwear Mart",
+    place: "Thrissur",
+    creditLimit: 250000,
+    outstanding: 41000,
+    overdueDays: 0,
+    lastOrder: "2026-08-20"
+  },
+  {
+    id: "c4",
+    name: "Alappuzha Chappal Depot",
+    place: "Alappuzha",
+    creditLimit: 400000,
+    outstanding: 312000,
+    overdueDays: 65,
+    lastOrder: "2026-07-02"
+  },
+  {
+    id: "c5",
+    name: "Kollam Footwear House",
+    place: "Kollam",
+    creditLimit: 300000,
+    outstanding: 58500,
+    overdueDays: 5,
+    lastOrder: "2026-08-22"
+  },
+  {
+    id: "c6",
+    name: "Thiruvalla Sole Traders",
+    place: "Pathanamthitta",
+    creditLimit: 200000,
+    outstanding: 187000,
+    overdueDays: 30,
+    lastOrder: "2026-08-05"
+  }
+];
+
+const ARTICLES = [
+  { code: "GTS-4501", name: "Gents Slipper 4501", colours: ["Black", "Brown", "Blue"] },
+  { code: "GTS-4502", name: "Gents Slipper 4502", colours: ["Black", "Brown"] },
+  { code: "LDS-2201", name: "Ladies Slipper 2201", colours: ["Black", "Brown", "Blue"] },
+  { code: "LDS-2208", name: "Ladies Slipper 2208", colours: ["Brown", "Blue"] },
+  { code: "KID-1102", name: "Kids Slipper 1102", colours: ["Black", "Blue"] },
+  { code: "GTS-4610", name: "Gents Slipper 4610", colours: ["Black", "Brown", "Blue"] }
+];
+
+// Stock per article+colour, pairs available for each of the five sizes.
+// Anything under LOW_STOCK_THRESHOLD pairs is flagged low stock.
+const LOW_STOCK_THRESHOLD = 40;
+
+const STOCK = {
+  "GTS-4501|Black": [120, 95, 140, 60, 30],
+  "GTS-4501|Brown": [80, 20, 55, 40, 25],
+  "GTS-4501|Blue": [10, 15, 20, 12, 8],
+  "GTS-4502|Black": [200, 180, 160, 90, 70],
+  "GTS-4502|Brown": [60, 45, 38, 22, 15],
+  "LDS-2201|Black": [90, 110, 100, 70, 50],
+  "LDS-2201|Brown": [45, 30, 25, 18, 10],
+  "LDS-2201|Blue": [70, 65, 60, 40, 35],
+  "LDS-2208|Brown": [55, 48, 42, 30, 20],
+  "LDS-2208|Blue": [15, 10, 22, 18, 12],
+  "KID-1102|Black": [130, 120, 100, 80, 60],
+  "KID-1102|Blue": [35, 28, 30, 20, 15],
+  "GTS-4610|Black": [150, 140, 120, 100, 85],
+  "GTS-4610|Brown": [40, 35, 30, 25, 18],
+  "GTS-4610|Blue": [25, 20, 15, 10, 5]
+};
+
+function getStock(articleCode, colour) {
+  return STOCK[articleCode + "|" + colour] || [0, 0, 0, 0, 0];
+}
+
+const PAYMENTS = [
+  { customer: "Malabar Footwear Traders", invoiceNo: "INV-3312", amount: 62500, overdueDays: 18 },
+  { customer: "Kochin Shoe Palace", invoiceNo: "INV-3288", amount: 118000, overdueDays: 42 },
+  { customer: "Alappuzha Chappal Depot", invoiceNo: "INV-3201", amount: 165000, overdueDays: 65 },
+  { customer: "Alappuzha Chappal Depot", invoiceNo: "INV-3255", amount: 147000, overdueDays: 33 },
+  { customer: "Thiruvalla Sole Traders", invoiceNo: "INV-3298", amount: 92000, overdueDays: 30 },
+  { customer: "Kollam Footwear House", invoiceNo: "INV-3340", amount: 58500, overdueDays: 5 }
+];
+
+let nextOrderNumber = 2451;
+
+</script>
+<script>
+// ============================================================
+// SAMPLE FOOTWEAR ERP — salesman screen
+// Vanilla JS, no dependencies, everything in memory.
+// ============================================================
+
+const PAIRS_PER_BOX = 24;
+
+// ---------- helpers ----------
+
+// 142500 -> "1,42,500"  (Indian digit grouping)
+function groupIndian(n) {
+  const s = String(Math.round(Math.abs(n)));
+  if (s.length <= 3) return s;
+  const last3 = s.slice(-3);
+  const rest = s.slice(0, -3);
+  return rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + last3;
+}
+
+function rupees(n) {
+  return "₹" + groupIndian(n);
+}
+
+function el(id) {
+  return document.getElementById(id);
+}
+
+// ---------- state ----------
+
+const state = {
+  customer: null,
+  ratio: [0, 0, 0, 0, 0],
+  boxes: 10,
+  lines: []
+};
+
+// ============================================================
+// TOP BAR + TABS
+// ============================================================
+
+function renderDate() {
+  const d = new Date();
+  el("todayDate").textContent = d.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function initTabs() {
+  el("tabs").addEventListener("click", function (e) {
+    const btn = e.target.closest(".tab");
+    if (!btn) return;
+    document.querySelectorAll(".tab").forEach(function (t) {
+      t.classList.toggle("is-active", t === btn);
+    });
+    document.querySelectorAll(".panel").forEach(function (p) {
+      p.hidden = p.id !== "panel-" + btn.dataset.tab;
+    });
+    window.scrollTo(0, 0);
+  });
+}
+
+// ============================================================
+// 1. CUSTOMER
+// ============================================================
+
+function initCustomers() {
+  const sel = el("customerSelect");
+  CUSTOMERS.forEach(function (c) {
+    const o = document.createElement("option");
+    o.value = c.id;
+    o.textContent = c.name + " — " + c.place;
+    sel.appendChild(o);
+  });
+
+  sel.addEventListener("change", function () {
+    state.customer = CUSTOMERS.find(function (c) { return c.id === sel.value; }) || null;
+    renderCustomerFigures();
+  });
+}
+
+function renderCustomerFigures() {
+  const box = el("customerFigures");
+  const c = state.customer;
+  if (!c) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+
+  el("figCredit").textContent = rupees(c.creditLimit);
+
+  const ratio = c.outstanding / c.creditLimit;
+  const out = el("figOutstanding");
+  out.textContent = rupees(c.outstanding);
+  out.classList.toggle("warn", ratio > 0.6);
+
+  const note = el("figOutstandingNote");
+  note.textContent = Math.round(ratio * 100) + "% of limit used";
+  note.classList.toggle("warn", ratio > 0.6);
+
+  const od = el("figOverdue");
+  od.textContent = c.overdueDays > 0 ? c.overdueDays + " days" : "None";
+  od.classList.toggle("warn", c.overdueDays > 0);
+}
+
+// ============================================================
+// 2. ARTICLE + COLOUR
+// ============================================================
+
+function initArticles() {
+  const artSel = el("articleSelect");
+  ARTICLES.forEach(function (a) {
+    const o = document.createElement("option");
+    o.value = a.code;
+    o.textContent = a.code + " — " + a.name;
+    artSel.appendChild(o);
+  });
+
+  artSel.addEventListener("change", function () {
+    renderColours();
+    renderCalc();
+  });
+  el("colourSelect").addEventListener("change", renderCalc);
+
+  renderColours();
+}
+
+function currentArticle() {
+  return ARTICLES.find(function (a) { return a.code === el("articleSelect").value; });
+}
+
+function renderColours() {
+  const sel = el("colourSelect");
+  const art = currentArticle();
+  sel.innerHTML = "";
+  art.colours.forEach(function (col) {
+    const o = document.createElement("option");
+    o.value = col;
+    o.textContent = col;
+    sel.appendChild(o);
+  });
+}
+
+// ============================================================
+// 3. RATIO BUILDER
+// ============================================================
+
+function initRatio() {
+  const grid = el("ratioGrid");
+  SIZES.forEach(function (size, i) {
+    const col = document.createElement("div");
+    col.className = "ratio-col";
+    col.innerHTML =
+      '<div class="ratio-size">' + size + "</div>" +
+      '<div class="stepper">' +
+        '<button class="step-btn" data-delta="-1" data-i="' + i + '" aria-label="Decrease ' + size + '">&minus;</button>' +
+        '<input class="ratio-input num" type="number" min="0" max="24" data-i="' + i + '" value="0">' +
+        '<button class="step-btn" data-delta="1" data-i="' + i + '" aria-label="Increase ' + size + '">+</button>' +
+      "</div>" +
+      '<div class="ratio-stock" data-stock="' + i + '"></div>';
+    grid.appendChild(col);
+  });
+
+  grid.addEventListener("click", function (e) {
+    const btn = e.target.closest(".step-btn");
+    if (!btn) return;
+    const i = +btn.dataset.i;
+    const next = state.ratio[i] + +btn.dataset.delta;
+    state.ratio[i] = Math.max(0, Math.min(PAIRS_PER_BOX, next));
+    syncRatioInputs();
+    renderAll();
+  });
+
+  grid.addEventListener("input", function (e) {
+    const input = e.target.closest(".ratio-input");
+    if (!input) return;
+    const v = parseInt(input.value, 10);
+    state.ratio[+input.dataset.i] =
+      isNaN(v) ? 0 : Math.max(0, Math.min(PAIRS_PER_BOX, v));
+    renderAll();
+  });
+
+  el("presets").addEventListener("click", function (e) {
+    const btn = e.target.closest(".preset");
+    if (!btn) return;
+    const key = btn.dataset.preset;
+    state.ratio = key === "custom" ? [0, 0, 0, 0, 0] : PRESETS[key].slice();
+    syncRatioInputs();
+    renderAll();
+  });
+
+  // start on the standard ratio so the demo opens with live numbers
+  state.ratio = PRESETS.standard.slice();
+  syncRatioInputs();
+}
+
+function syncRatioInputs() {
+  document.querySelectorAll(".ratio-input").forEach(function (input) {
+    input.value = state.ratio[+input.dataset.i];
+  });
+}
+
+function ratioTotal() {
+  return state.ratio.reduce(function (a, b) { return a + b; }, 0);
+}
+
+function renderCounter() {
+  const total = ratioTotal();
+  const remaining = PAIRS_PER_BOX - total;
+  const c = el("counter");
+  const ok = total === PAIRS_PER_BOX;
+
+  let tail;
+  if (ok) tail = "box complete";
+  else if (remaining > 0) tail = remaining + " remaining";
+  else tail = Math.abs(remaining) + " over";
+
+  c.innerHTML =
+    total + " of " + PAIRS_PER_BOX + " assigned &mdash; " + tail +
+    "<small>One box = 24 pairs</small>";
+  c.classList.toggle("accent", ok);
+  c.classList.toggle("warn", !ok);
+}
+
+function renderPresetState() {
+  const cur = state.ratio.join(",");
+  document.querySelectorAll(".preset").forEach(function (btn) {
+    const key = btn.dataset.preset;
+    const match = key === "custom"
+      ? cur === "0,0,0,0,0"
+      : PRESETS[key].join(",") === cur;
+    btn.classList.toggle("is-active", match);
+  });
+}
+
+// ============================================================
+// 4 + 5. LIVE CALCULATION
+// ============================================================
+
+function initBoxes() {
+  el("boxesInput").addEventListener("input", function () {
+    const v = parseInt(this.value, 10);
+    state.boxes = isNaN(v) || v < 1 ? 0 : v;
+    renderAll();
+  });
+}
+
+function renderCalc() {
+  const boxes = state.boxes;
+  const stock = getStock(el("articleSelect").value, el("colourSelect").value);
+
+  el("calcTotalPairs").textContent = groupIndian(boxes * PAIRS_PER_BOX);
+  el("calcFormula").innerHTML =
+    (boxes || 0) + " boxes × " + PAIRS_PER_BOX + " pairs";
+
+  // header
+  let head = "<th>Size</th>";
+  SIZES.forEach(function (s) { head += "<th>" + s + "</th>"; });
+  head += "<th>Total</th>";
+  el("calcHead").innerHTML = head;
+
+  // per box
+  let perBox = '<td class="t-row-label">Per box</td>';
+  state.ratio.forEach(function (n) {
+    perBox += '<td class="t-strong">' + n + "</td>";
+  });
+  const total = ratioTotal();
+  perBox += '<td class="t-strong ' + (total === PAIRS_PER_BOX ? "accent" : "warn") + '">' + total + "</td>";
+  el("calcPerBox").innerHTML = perBox;
+
+  // ordered
+  let ordered = '<td class="t-row-label">Ordered</td>';
+  state.ratio.forEach(function (n) {
+    ordered += '<td class="t-lg">' + groupIndian(n * boxes) + "</td>";
+  });
+  ordered += '<td class="t-lg accent">' + groupIndian(total * boxes) + "</td>";
+  el("calcOrdered").innerHTML = ordered;
+
+  // stock indicator
+  let stockRow = '<td class="t-row-label">Stock</td>';
+  state.ratio.forEach(function (n, i) {
+    const need = n * boxes;
+    const have = stock[i];
+    const low = have < need || have < LOW_STOCK_THRESHOLD;
+    stockRow += '<td class="stock-tag ' + (low ? "warn" : "") + '">' +
+      (low ? "Low stock" : "In stock") + "</td>";
+  });
+  stockRow += "<td></td>";
+  el("calcStock").innerHTML = stockRow;
+
+  // per-size note under the ratio builder
+  document.querySelectorAll("[data-stock]").forEach(function (node, i) {
+    const need = state.ratio[i] * boxes;
+    const have = stock[i];
+    const low = have < need || have < LOW_STOCK_THRESHOLD;
+    node.textContent = low ? "Low stock" : "In stock";
+    node.classList.toggle("warn", low);
+  });
+}
+
+// ============================================================
+// 6. ORDER LINES
+// ============================================================
+
+function initOrderList() {
+  el("addLineBtn").addEventListener("click", function () {
+    const art = currentArticle();
+    state.lines.push({
+      id: Date.now() + Math.random(),
+      article: art.code,
+      articleName: art.name,
+      colour: el("colourSelect").value,
+      boxes: state.boxes,
+      ratio: state.ratio.slice(),
+      pairs: state.boxes * PAIRS_PER_BOX
+    });
+    el("confirmMsg").hidden = true;
+    renderOrderList();
+    updateButtons();
+  });
+
+  el("orderBody").addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-remove]");
+    if (!btn) return;
+    const id = btn.dataset.remove;
+    state.lines = state.lines.filter(function (l) { return String(l.id) !== id; });
+    el("confirmMsg").hidden = true;
+    renderOrderList();
+    updateButtons();
+  });
+
+  el("submitBtn").addEventListener("click", function () {
+    const msg = el("confirmMsg");
+    msg.textContent =
+      "Order sent to office for approval — Order no. SO-" + nextOrderNumber;
+    msg.hidden = false;
+    nextOrderNumber++;
+  });
+}
+
+function renderOrderList() {
+  const has = state.lines.length > 0;
+  el("orderEmpty").hidden = has;
+  el("orderTableWrap").hidden = !has;
+  el("orderFoot").hidden = !has;
+
+  const body = el("orderBody");
+  body.innerHTML = state.lines.map(function (l) {
+    return "<tr>" +
+      '<td><span class="t-name">' + l.article + "</span>" +
+        '<span class="t-sub">' + l.colour + "</span></td>" +
+      '<td style="text-align:left" class="ratio-chip">' + l.ratio.join("-") + "</td>" +
+      '<td class="t-strong">' + l.boxes + "</td>" +
+      '<td class="t-strong">' + groupIndian(l.pairs) + "</td>" +
+      '<td><button class="linkbtn" data-remove="' + l.id + '">Remove</button></td>' +
+      "</tr>";
+  }).join("");
+
+  const boxes = state.lines.reduce(function (a, l) { return a + l.boxes; }, 0);
+  const pairs = state.lines.reduce(function (a, l) { return a + l.pairs; }, 0);
+  el("totalBoxes").textContent = groupIndian(boxes);
+  el("totalPairs").textContent = groupIndian(pairs);
+}
+
+function updateButtons() {
+  const ready = ratioTotal() === PAIRS_PER_BOX && state.boxes > 0;
+  el("addLineBtn").disabled = !ready;
+
+  const hint = el("addHint");
+  if (ready) hint.textContent = "";
+  else if (state.boxes < 1) hint.textContent = "Enter number of boxes";
+  else hint.textContent = "Assign all 24 pairs to enable";
+
+  el("submitBtn").disabled = state.lines.length === 0;
+}
+
+// ============================================================
+// READ-ONLY TABS
+// ============================================================
+
+function renderCustomersTab() {
+  el("customersBody").innerHTML = CUSTOMERS.map(function (c) {
+    const over = c.outstanding / c.creditLimit > 0.6;
+    return "<tr>" +
+      '<td><span class="t-name">' + c.name + "</span>" +
+        '<span class="t-sub">' + c.place + "</span></td>" +
+      '<td class="t-strong">' + rupees(c.creditLimit) + "</td>" +
+      '<td class="t-strong' + (over ? " warn" : "") + '">' + rupees(c.outstanding) + "</td>" +
+      '<td class="muted">' + formatDate(c.lastOrder) + "</td>" +
+      "</tr>";
+  }).join("");
+}
+
+function formatDate(iso) {
+  const p = iso.split("-");
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return parseInt(p[2], 10) + " " + months[parseInt(p[1], 10) - 1] + " " + p[0];
+}
+
+function renderStockTab() {
+  let head = "<th>Article</th><th>Colour</th>";
+  SIZES.forEach(function (s) { head += "<th>" + s + "</th>"; });
+  el("stockHead").innerHTML = head;
+
+  const keys = Object.keys(STOCK).slice(0, 6);
+  el("stockBody").innerHTML = keys.map(function (k) {
+    const parts = k.split("|");
+    const rows = STOCK[k].map(function (n) {
+      return '<td class="t-strong' + (n < LOW_STOCK_THRESHOLD ? " warn" : "") + '">' +
+        groupIndian(n) + "</td>";
+    }).join("");
+    return "<tr><td><span class=\"t-name\">" + parts[0] + "</span></td>" +
+      '<td class="muted">' + parts[1] + "</td>" + rows + "</tr>";
+  }).join("");
+}
+
+function renderPaymentsTab() {
+  el("paymentsBody").innerHTML = PAYMENTS.map(function (p) {
+    const late = p.overdueDays > 30;
+    return "<tr>" +
+      '<td><span class="t-name">' + p.customer + "</span></td>" +
+      '<td class="muted">' + p.invoiceNo + "</td>" +
+      '<td class="t-strong">' + rupees(p.amount) + "</td>" +
+      '<td class="t-strong' + (late ? " warn" : "") + '">' + p.overdueDays + " days</td>" +
+      "</tr>";
+  }).join("");
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+
+function renderAll() {
+  renderCounter();
+  renderPresetState();
+  renderCalc();
+  updateButtons();
+}
+
+renderDate();
+initTabs();
+initCustomers();
+initArticles();
+initRatio();
+initBoxes();
+initOrderList();
+renderOrderList();
+renderCustomersTab();
+renderStockTab();
+renderPaymentsTab();
+renderAll();
+
+</script>
+</body>
+</html>
