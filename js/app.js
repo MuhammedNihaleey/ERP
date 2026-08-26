@@ -426,7 +426,7 @@ function addItem(code, colour) {
     colour: colour && art.colours.indexOf(colour) !== -1 ? colour : art.colours[0],
     preset: "standard",
     custom: PRESETS.standard.slice(),
-    boxes: 10
+    boxes: 1
   });
 
   el("confirmMsg").hidden = true;
