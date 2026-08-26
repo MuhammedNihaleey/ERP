@@ -387,6 +387,81 @@ function updateButtons() {
 }
 
 // ============================================================
+// SUCCESS CHIME
+// Synthesised with the Web Audio API — no audio file to ship,
+// so it still works offline. Audio is a nice-to-have: every
+// failure path is swallowed so it can never break the demo.
+// ============================================================
+
+let audioCtx = null;
+let soundOn = true;
+
+function initSound() {
+  const btn = el("soundToggle");
+  renderSoundToggle();
+  btn.addEventListener("click", function () {
+    soundOn = !soundOn;
+    renderSoundToggle();
+    if (soundOn) playChime(); // little preview so you know it's back on
+  });
+}
+
+function renderSoundToggle() {
+  const btn = el("soundToggle");
+  const speaker = '<path d="M3 6h3l4-3.5v13L6 12H3z" fill="currentColor"/>';
+  const waves =
+    '<path d="M12.5 5.5a4 4 0 010 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>';
+  const slash =
+    '<path d="M12.5 6l4 6M16.5 6l-4 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>';
+
+  btn.innerHTML =
+    '<svg viewBox="0 0 18 18" aria-hidden="true">' +
+    speaker + (soundOn ? waves : slash) + "</svg>";
+  btn.classList.toggle("is-on", soundOn);
+  btn.setAttribute("aria-pressed", soundOn ? "true" : "false");
+  btn.setAttribute("title", soundOn ? "Sound on" : "Sound off");
+  btn.setAttribute("aria-label", soundOn ? "Sound on" : "Sound off");
+}
+
+function playChime() {
+  if (!soundOn) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!audioCtx) audioCtx = new AC();
+    // browsers start the context suspended until a user gesture
+    if (audioCtx.state === "suspended" && audioCtx.resume) audioCtx.resume();
+
+    const now = audioCtx.currentTime;
+    // rising major triad — E5, G#5, B5
+    const notes = [
+      { freq: 659.25, at: 0.00 },
+      { freq: 830.61, at: 0.085 },
+      { freq: 987.77, at: 0.17 }
+    ];
+
+    notes.forEach(function (n) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = n.freq;
+
+      const t = now + n.at;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t);
+      osc.stop(t + 0.45);
+    });
+  } catch (e) {
+    // no audio available — carry on silently
+  }
+}
+
+// ============================================================
 // ORDER PLACED — animated confirmation
 // ============================================================
 
@@ -399,6 +474,7 @@ function showSuccess(orderNo, lineCount, boxes, pairs) {
   const overlay = el("successOverlay");
   overlay.hidden = false;
   restartAnimations(overlay);
+  playChime();
   el("successDone").focus();
 }
 
@@ -497,6 +573,7 @@ function renderAll() {
 }
 
 renderDate();
+initSound();
 initTabs();
 initCustomers();
 initArticles();

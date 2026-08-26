@@ -245,9 +245,43 @@ button {
   font-weight: 400;
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .topbar-date {
   font-size: 13px;
   color: var(--muted);
+}
+
+.sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.sound-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sound-toggle.is-on {
+  color: var(--accent);
+  border-color: #C3D2CC;
+}
+
+.sound-toggle svg {
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 
 .tabs {
