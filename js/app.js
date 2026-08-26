@@ -72,6 +72,7 @@ const state = {
   customer: null,
   items: [],          // { id, code, colour, preset, boxes }
   category: "all",
+  brand: null,
   search: ""
 };
 
@@ -95,13 +96,7 @@ function initTabs() {
   el("tabs").addEventListener("click", function (e) {
     const btn = e.target.closest(".tab");
     if (!btn) return;
-    document.querySelectorAll(".tab").forEach(function (t) {
-      t.classList.toggle("is-active", t === btn);
-    });
-    document.querySelectorAll(".panel").forEach(function (p) {
-      p.hidden = p.id !== "panel-" + btn.dataset.tab;
-    });
-    window.scrollTo(0, 0);
+    showTab(btn.dataset.tab);
   });
 }
 
@@ -228,103 +223,205 @@ function chappalSVG(articleCode, colourName) {
 }
 
 // ============================================================
-// 2. PRODUCT PICKER — searchable dropdown with images
+// 2. SHOP — the browsing surface a salesman shows a dealer
 // ============================================================
 
-function initPicker() {
-  el("pickerCats").innerHTML =
+function initShop() {
+  el("shopCats").innerHTML =
     [{ key: "all", label: "All" }].concat(CATEGORIES).map(function (c) {
-      return '<button type="button" class="pcat' +
+      return '<button type="button" class="cat' +
         (c.key === state.category ? " is-active" : "") +
         '" data-cat="' + c.key + '">' + c.label + "</button>";
     }).join("");
 
-  el("pickerCats").addEventListener("click", function (e) {
-    const btn = e.target.closest(".pcat");
+  el("shopCats").addEventListener("click", function (e) {
+    const btn = e.target.closest(".cat");
     if (!btn) return;
     state.category = btn.dataset.cat;
-    document.querySelectorAll(".pcat").forEach(function (c) {
+    document.querySelectorAll("#shopCats .cat").forEach(function (c) {
       c.classList.toggle("is-active", c.dataset.cat === state.category);
     });
-    renderPickerList();
+    renderGrid();
   });
 
-  el("pickerSearch").addEventListener("input", function () {
+  el("brandGrid").addEventListener("click", function (e) {
+    const tile = e.target.closest(".company");
+    if (!tile) return;
+    state.brand = tile.dataset.brand;
+    renderGrid();
+    el("browseTitle").scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "start"
+    });
+  });
+
+  el("brandClear").addEventListener("click", function () {
+    state.brand = null;
+    renderGrid();
+  });
+
+  el("shopSearch").addEventListener("input", function () {
     state.search = this.value.trim().toLowerCase();
-    openPicker();
-    renderPickerList();
+    renderShop();
   });
 
-  el("pickerSearch").addEventListener("focus", openPicker);
-
-  el("pickerBtn").addEventListener("click", function () {
-    if (el("pickerPanel").hidden) {
-      openPicker();
-      el("pickerSearch").focus();
-    } else {
-      closePicker();
-    }
+  el("shopSearchBtn").addEventListener("click", function () {
+    el("shopSearch").focus();
   });
 
-  el("pickerList").addEventListener("click", function (e) {
-    const row = e.target.closest(".prow");
-    if (!row) return;
-    addItem(row.dataset.code, null);
+  // every card lives in a container that delegates up to here
+  document.getElementById("panel-shop").addEventListener("click", function (e) {
+    const add = e.target.closest("[data-add]");
+    if (!add) return;
+    e.preventDefault();
+    addItem(add.dataset.add, add.dataset.colour || null);
+    bumpBag(add);
   });
 
-  // clicking away closes the panel
-  document.addEventListener("click", function (e) {
-    if (!e.target.closest("#picker")) closePicker();
+  el("goShop").addEventListener("click", function () {
+    showTab("shop");
   });
 
-  renderPickerList();
+  el("bagBtn").addEventListener("click", function () {
+    showTab("order");
+  });
+
+  renderShop();
 }
 
-function openPicker() {
-  el("pickerPanel").hidden = false;
-  el("picker").classList.add("is-open");
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(function (t) {
+    t.classList.toggle("is-active", t.dataset.tab === name);
+  });
+  document.querySelectorAll(".panel").forEach(function (p) {
+    p.hidden = p.id !== "panel-" + name;
+  });
+  window.scrollTo(0, 0);
 }
 
-function closePicker() {
-  el("pickerPanel").hidden = true;
-  el("picker").classList.remove("is-open");
+function cardMarkup(a, opts) {
+  const note = opts && opts.note ? opts.note : "";
+  const dots = a.colours.map(function (col) {
+    const c = COLOUR_HEX[col] || COLOUR_HEX.Black;
+    return '<span class="card-dot" data-add="' + a.code + '" data-colour="' + col +
+      '" style="background:' + c.body + '" title="Add in ' + col + '"></span>';
+  }).join("");
+
+  return '<article class="card">' +
+    (a.isNew ? '<span class="card-flag">New</span>' : "") +
+    (note ? '<span class="card-flag card-flag-warn">' + note + "</span>" : "") +
+    '<div class="card-img">' + chappalSVG(a.code, a.colours[0]) + "</div>" +
+    '<div class="card-top">' +
+      '<span class="card-code">' + a.code + "</span>" +
+      '<span class="card-rate num">' + rupees(a.rate) + "</span>" +
+    "</div>" +
+    '<span class="card-name">' + esc(a.name) + "</span>" +
+    '<span class="card-brand">' + esc(getBrand(a.brand).name) + "</span>" +
+    '<div class="card-dots">' + dots + "</div>" +
+    '<button type="button" class="card-add" data-add="' + a.code + '">+ Add</button>' +
+  "</article>";
 }
 
 function matchingArticles() {
   return ARTICLES.filter(function (a) {
+    if (state.brand && a.brand !== state.brand) return false;
     if (state.category !== "all" && a.category !== state.category) return false;
-    if (!state.search) return true;
+    return true;
+  });
+}
+
+function searchArticles() {
+  return ARTICLES.filter(function (a) {
     return (a.code + " " + a.name).toLowerCase().indexOf(state.search) !== -1;
   });
 }
 
-function renderPickerList() {
-  const list = matchingArticles();
-  const box = el("pickerList");
+function renderShop() {
+  const searching = state.search.length > 0;
 
-  if (list.length === 0) {
-    box.innerHTML = '<p class="picker-none">No article matches “' +
-      esc(state.search) + '”.</p>';
+  el("shopHome").hidden = searching;
+  el("shopResults").hidden = !searching;
+
+  if (searching) {
+    const found = searchArticles();
+    el("shopResultsCount").textContent =
+      found.length + (found.length === 1 ? " article" : " articles");
+    el("gridResults").innerHTML = found.length
+      ? found.map(function (a) { return cardMarkup(a); }).join("")
+      : '<p class="picker-none">No article matches “' + esc(state.search) + '”.</p>';
     return;
   }
 
-  box.innerHTML = list.map(function (a) {
-    const dots = a.colours.map(function (col) {
-      const c = COLOUR_HEX[col] || COLOUR_HEX.Black;
-      return '<span class="prow-dot" style="background:' + c.body +
-        '" title="' + col + '"></span>';
-    }).join("");
+  el("stripNew").innerHTML = ARTICLES.filter(function (a) { return a.isNew; })
+    .map(function (a) { return cardMarkup(a); }).join("");
 
-    return '<button type="button" class="prow" data-code="' + a.code + '">' +
-      '<span class="prow-img">' + chappalSVG(a.code, a.colours[0]) + "</span>" +
-      '<span class="prow-main">' +
-        '<span class="prow-code">' + a.code + "</span>" +
-        '<span class="prow-name">' + esc(a.name) + "</span>" +
-        '<span class="prow-dots">' + dots + "</span>" +
+  el("stripFast").innerHTML = ARTICLES.filter(function (a) { return a.fastMoving; })
+    .map(function (a) { return cardMarkup(a); }).join("");
+
+  // the four thinnest articles in the godown
+  const low = ARTICLES.slice()
+    .sort(function (x, y) { return articleStock(x.code) - articleStock(y.code); })
+    .slice(0, 4);
+  el("stripLow").innerHTML = low.map(function (a) {
+    return cardMarkup(a, { note: groupIndian(articleStock(a.code)) + " left" });
+  }).join("");
+
+  renderBrands();
+  renderGrid();
+}
+
+function renderBrands() {
+  el("brandGrid").innerHTML = BRANDS.map(function (b) {
+    const n = ARTICLES.filter(function (a) { return a.brand === b.key; }).length;
+    // two letters either way: initials for multi-word, first two otherwise,
+    // so Breeze and Bloom don't both collapse to "B"
+    const words = b.name.split(" ");
+    const initials = (words.length > 1
+      ? words[0][0] + words[1][0]
+      : b.name.slice(0, 2)).toUpperCase();
+
+    return '<button type="button" class="company" data-brand="' + b.key + '">' +
+      '<span class="company-mark">' + initials + "</span>" +
+      '<span class="company-text">' +
+        '<span class="company-name">' + esc(b.name) + "</span>" +
+        '<span class="company-tag">' + esc(b.tagline) + "</span>" +
       "</span>" +
-      '<span class="prow-rate num">' + rupees(a.rate) + "</span>" +
+      '<span class="company-count num">' + n + "</span>" +
     "</button>";
   }).join("");
+}
+
+function renderGrid() {
+  const list = matchingArticles();
+  const brand = state.brand ? getBrand(state.brand) : null;
+
+  document.querySelectorAll(".company").forEach(function (t) {
+    t.classList.toggle("is-active", t.dataset.brand === state.brand);
+  });
+
+  el("brandActive").hidden = !brand;
+  if (brand) el("brandActiveName").textContent = brand.name + " — " + brand.tagline;
+  el("browseTitle").textContent = brand ? "Browse " + brand.name : "Browse by category";
+
+  el("shopCount").textContent =
+    list.length + (list.length === 1 ? " article" : " articles");
+
+  el("gridAll").innerHTML = list.length
+    ? list.map(function (a) { return cardMarkup(a); }).join("")
+    : '<p class="picker-none">Nothing in this company for that category.</p>';
+}
+
+// a small confirmation that the tap landed, plus the badge ticking up
+function bumpBag(sourceNode) {
+  flash(el("bagBtn"), "bump");
+  const card = sourceNode.closest(".card");
+  if (card) flash(card, "card-added");
+}
+
+function renderBagCount() {
+  const n = state.items.length;
+  el("bagCount").textContent = n;
+  el("bagBtn").classList.toggle("has-items", n > 0);
 }
 
 // ============================================================
@@ -430,10 +527,6 @@ function addItem(code, colour) {
   });
 
   el("confirmMsg").hidden = true;
-  el("pickerSearch").value = "";
-  state.search = "";
-  closePicker();
-  renderPickerList();
   renderSelected();
   renderTotals();
 }
@@ -575,6 +668,7 @@ function renderTotals() {
 
   const allValid = state.items.every(itemValid);
   el("submitBtn").disabled = state.items.length === 0 || !allValid;
+  renderBagCount();
 
   const hint = el("submitHint");
   hint.hidden = allValid || state.items.length === 0;
@@ -739,18 +833,15 @@ function closeSuccess() {
 function startNewOrder() {
   state.items = [];
   state.search = "";
-  el("pickerSearch").value = "";
-  renderPickerList();
+  el("shopSearch").value = "";
+  renderShop();
   renderSelected();
   renderTotals();
-  window.scrollTo(0, 0);
+  showTab("shop");
 }
 
 document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") {
-    closeSuccess();
-    closePicker();
-  }
+  if (e.key === "Escape") closeSuccess();
 });
 
 // ============================================================
@@ -813,7 +904,7 @@ renderDate();
 initSound();
 initTabs();
 initCustomers();
-initPicker();
+initShop();
 initSelected();
 renderSelected();
 renderTotals();

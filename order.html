@@ -20,6 +20,13 @@
     </div>
     <div class="topbar-right">
       <span class="topbar-date" id="todayDate"></span>
+      <button class="bagbtn" id="bagBtn" aria-label="Open bag">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M4 6h12l-1 11H5L4 6Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          <path d="M7.5 8V5.5a2.5 2.5 0 015 0V8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <span class="bagbtn-count" id="bagCount">0</span>
+      </button>
       <button class="sound-toggle" id="soundToggle" aria-pressed="true" title="Sound on"></button>
     </div>
   </div>
@@ -27,7 +34,8 @@
 
 <div class="tabs-wrap">
   <nav class="tabs" id="tabs">
-    <button class="tab is-active" data-tab="order">New Order</button>
+    <button class="tab is-active" data-tab="shop">Shop</button>
+    <button class="tab" data-tab="order">Bag</button>
     <button class="tab" data-tab="customers">My Customers</button>
     <button class="tab" data-tab="stock">Stock</button>
     <button class="tab" data-tab="payments">Payments</button>
@@ -36,8 +44,81 @@
 
 <main>
 
-  <!-- ================= NEW ORDER ================= -->
-  <section class="panel" id="panel-order">
+
+  <!-- ================= SHOP ================= -->
+  <section class="panel" id="panel-shop">
+
+    <div class="shop-search">
+      <input type="text" id="shopSearch" autocomplete="off"
+             placeholder="Search article code or name">
+      <button class="picker-btn" id="shopSearchBtn" aria-label="Search products">
+        <svg viewBox="0 0 18 18" aria-hidden="true">
+          <circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- search results replace the whole shop while typing -->
+    <div class="section" id="shopResults" hidden>
+      <div class="section-head">
+        <h2 class="section-title">Search results</h2>
+        <span class="hint" id="shopResultsCount"></span>
+      </div>
+      <div class="card-grid" id="gridResults"></div>
+    </div>
+
+    <div id="shopHome">
+      <div class="section strip-section">
+        <div class="section-head">
+          <h2 class="section-title">New launches</h2>
+          <span class="hint">Swipe for more</span>
+        </div>
+        <div class="strip" id="stripNew"></div>
+      </div>
+
+      <div class="section strip-section">
+        <div class="section-head">
+          <h2 class="section-title">Fast moving</h2>
+          <span class="hint">Swipe for more</span>
+        </div>
+        <div class="strip" id="stripFast"></div>
+      </div>
+
+      <div class="section strip-section">
+        <div class="section-head">
+          <h2 class="section-title">Clearance — low stock</h2>
+          <span class="hint">Order soon</span>
+        </div>
+        <div class="strip" id="stripLow"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2 class="section-title">Shop by company</h2>
+          <span class="hint">Tap a company to see its range</span>
+        </div>
+        <div class="company-grid" id="brandGrid"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2 class="section-title" id="browseTitle">Browse by category</h2>
+          <span class="hint" id="shopCount"></span>
+        </div>
+        <div class="company-active" id="brandActive" hidden>
+          <span class="company-active-name" id="brandActiveName"></span>
+          <button class="linkbtn" id="brandClear">Show all companies</button>
+        </div>
+        <nav class="cats" id="shopCats"></nav>
+        <div class="card-grid" id="gridAll"></div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ================= BAG ================= -->
+  <section class="panel" id="panel-order" hidden>
 
     <!-- 1. CUSTOMER -->
     <div class="section">
@@ -65,39 +146,16 @@
       </div>
     </div>
 
-    <!-- 2. ADD PRODUCTS — searchable dropdown with images -->
-    <div class="section section-dropdown">
-      <div class="section-head">
-        <h2 class="section-title"><span class="step">02</span>Add products</h2>
-      </div>
-
-      <div class="picker" id="picker">
-        <div class="picker-field">
-          <input type="text" id="pickerSearch" autocomplete="off"
-                 placeholder="Search article code or name">
-          <button class="picker-btn" id="pickerBtn" aria-label="Search products">
-            <svg viewBox="0 0 18 18" aria-hidden="true">
-              <circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
-              <path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="picker-panel" id="pickerPanel" hidden>
-          <div class="picker-cats" id="pickerCats"></div>
-          <div class="picker-list" id="pickerList"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- 3. SELECTED ITEMS -->
     <div class="section">
       <div class="section-head">
-        <h2 class="section-title"><span class="step">03</span>Selected items</h2>
+        <h2 class="section-title"><span class="step">02</span>Items in bag</h2>
         <span class="hint" id="selCount"></span>
       </div>
 
-      <div id="selEmpty" class="empty">Nothing selected yet — search above to add products.</div>
+      <div id="selEmpty" class="empty">
+        Your bag is empty. <button class="linkbtn" id="goShop">Browse the shop</button> to add products.
+      </div>
       <div class="sel-list" id="selList"></div>
 
       <div class="sum" id="sumBox" hidden>

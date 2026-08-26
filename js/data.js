@@ -12,6 +12,21 @@ const PRESETS = {
   small: [6, 7, 5, 4, 2]
 };
 
+// House brands under the Sample Footwear group.
+// These are invented names — deliberately not real-world footwear brands.
+const BRANDS = [
+  { key: "classic", name: "SF Classic", tagline: "Everyday gents" },
+  { key: "stride",  name: "Stride Pro", tagline: "Premium comfort" },
+  { key: "terra",   name: "Terra",      tagline: "Value range" },
+  { key: "breeze",  name: "Breeze",     tagline: "Ladies daily" },
+  { key: "bloom",   name: "Bloom",      tagline: "Ladies premium" },
+  { key: "junior",  name: "Junior Step", tagline: "Kids" }
+];
+
+function getBrand(key) {
+  return BRANDS.find(function (b) { return b.key === key; });
+}
+
 const CATEGORIES = [
   { key: "gents", label: "Gents", prefix: "GTS" },
   { key: "ladies", label: "Ladies", prefix: "LDS" },
@@ -78,22 +93,22 @@ const CUSTOMERS = [
 // rate = dealer rate per pair, in rupees. A box is 24 pairs.
 const ARTICLES = [
   // ---------- gents ----------
-  { code: "GTS-4501", style: "thong", name: "Gents Daily Slipper", category: "gents", rate: 185, colours: ["Black", "Brown", "Blue"] },
-  { code: "GTS-4502", style: "band", name: "Gents Casual Slipper", category: "gents", rate: 210, colours: ["Black", "Brown"] },
-  { code: "GTS-4610", style: "cross", name: "Gents Comfort Slipper", category: "gents", rate: 245, colours: ["Black", "Brown", "Blue"] },
-  { code: "GTS-4705", style: "thong", name: "Gents Economy Slipper", category: "gents", rate: 165, colours: ["Black", "Blue"] },
-  { code: "GTS-4820", style: "tstrap", name: "Gents Premium Slipper", category: "gents", rate: 295, colours: ["Black", "Brown"] },
+  { code: "GTS-4501", brand: "classic", style: "thong", name: "Gents Daily Slipper", category: "gents", rate: 185, colours: ["Black", "Brown", "Blue"] , fastMoving: true },
+  { code: "GTS-4502", brand: "classic", style: "band", name: "Gents Casual Slipper", category: "gents", rate: 210, colours: ["Black", "Brown"]  },
+  { code: "GTS-4610", brand: "stride", style: "cross", name: "Gents Comfort Slipper", category: "gents", rate: 245, colours: ["Black", "Brown", "Blue"] , isNew: true },
+  { code: "GTS-4705", brand: "terra", style: "thong", name: "Gents Economy Slipper", category: "gents", rate: 165, colours: ["Black", "Blue"] , fastMoving: true },
+  { code: "GTS-4820", brand: "stride", style: "tstrap", name: "Gents Premium Slipper", category: "gents", rate: 295, colours: ["Black", "Brown"] , isNew: true },
 
   // ---------- ladies ----------
-  { code: "LDS-2201", style: "band", name: "Ladies Daily Slipper", category: "ladies", rate: 165, colours: ["Black", "Brown", "Blue"] },
-  { code: "LDS-2208", style: "cross", name: "Ladies Fancy Slipper", category: "ladies", rate: 175, colours: ["Brown", "Blue"] },
-  { code: "LDS-2310", style: "tstrap", name: "Ladies Comfort Slipper", category: "ladies", rate: 195, colours: ["Black", "Brown"] },
-  { code: "LDS-2415", style: "band", name: "Ladies Premium Slipper", category: "ladies", rate: 225, colours: ["Black", "Blue"] },
+  { code: "LDS-2201", brand: "breeze", style: "band", name: "Ladies Daily Slipper", category: "ladies", rate: 165, colours: ["Black", "Brown", "Blue"] , fastMoving: true },
+  { code: "LDS-2208", brand: "breeze", style: "cross", name: "Ladies Fancy Slipper", category: "ladies", rate: 175, colours: ["Brown", "Blue"]  },
+  { code: "LDS-2310", brand: "bloom", style: "tstrap", name: "Ladies Comfort Slipper", category: "ladies", rate: 195, colours: ["Black", "Brown"]  },
+  { code: "LDS-2415", brand: "bloom", style: "band", name: "Ladies Premium Slipper", category: "ladies", rate: 225, colours: ["Black", "Blue"] , isNew: true },
 
   // ---------- kids ----------
-  { code: "KID-1102", style: "thong", name: "Kids School Slipper", category: "kids", rate: 120, colours: ["Black", "Blue"] },
-  { code: "KID-1205", style: "cross", name: "Kids Fancy Slipper", category: "kids", rate: 135, colours: ["Brown", "Blue"] },
-  { code: "KID-1310", style: "band", name: "Kids Sport Slipper", category: "kids", rate: 150, colours: ["Black", "Blue"] }
+  { code: "KID-1102", brand: "junior", style: "thong", name: "Kids School Slipper", category: "kids", rate: 120, colours: ["Black", "Blue"] , fastMoving: true },
+  { code: "KID-1205", brand: "junior", style: "cross", name: "Kids Fancy Slipper", category: "kids", rate: 135, colours: ["Brown", "Blue"]  },
+  { code: "KID-1310", brand: "junior", style: "band", name: "Kids Sport Slipper", category: "kids", rate: 150, colours: ["Black", "Blue"] , isNew: true }
 ];
 
 // Stock per article+colour, pairs available for each of the five sizes.
@@ -134,6 +149,14 @@ const STOCK = {
 
 function getStock(articleCode, colour) {
   return STOCK[articleCode + "|" + colour] || [0, 0, 0, 0, 0];
+}
+
+// total pairs in the godown across every colour and size of an article
+function articleStock(code) {
+  return Object.keys(STOCK).reduce(function (sum, k) {
+    if (k.split("|")[0] !== code) return sum;
+    return sum + STOCK[k].reduce(function (a, b) { return a + b; }, 0);
+  }, 0);
 }
 
 function getArticle(code) {
