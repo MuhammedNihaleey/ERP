@@ -4,19 +4,33 @@
    ============================================================ */
 
 :root {
-  --bg: #F7F5F0;
-  --surface: #FFFDF8;
-  --text: #1F1E1C;
-  --muted: #7A776F;
-  --border: #E2DED4;
-  --accent: #2F5D50;
-  --accent-soft: #EDF1EF;
-  --warning: #B4552D;
-  --warning-soft: #F7EDE7;
+  --bg: #FBF6F5;
+  --surface: #FFFFFF;
+  --text: #1C1A1A;
+  --muted: #7C7370;
+  --border: #EEDFDD;
+
+  --accent: #B3202C;        /* brand red — buttons, active states, key numbers */
+  --accent-dark: #8E1922;   /* pressed / hover */
+  --accent-soft: #FCEFEF;
+  --accent-line: #EBC9CC;
+  --on-accent: #FFFFFF;
+
+  --warning: #B4741A;       /* amber — low stock, overdue. kept distinct from brand red */
+  --warning-soft: #FBF2E4;
+
+  --success: #2E7D5B;       /* order confirmed. stays green: red would read as failure */
+
+  /* product colours, used by the chappal illustrations */
+  --pc-black: #262322;
+  --pc-brown: #6B4429;
+  --pc-blue: #2B4C7E;
 
   --radius: 4px;
   --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 * {
@@ -57,18 +71,6 @@ body {
 .num {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
-}
-
-.warn {
-  color: var(--warning);
-}
-
-.accent {
-  color: var(--accent);
-}
-
-.muted {
-  color: var(--muted);
 }
 
 /* ---------- form controls ---------- */
@@ -115,12 +117,12 @@ button {
   font-weight: 600;
   letter-spacing: 0.02em;
   background: var(--accent);
-  color: #FFFDF8;
+  color: var(--on-accent);
   border: 1px solid var(--accent);
 }
 
 .btn:hover {
-  background: #274E43;
+  background: var(--accent-dark);
 }
 
 .btn:disabled {
@@ -152,6 +154,9 @@ button {
    ============================================================ */
 
 .login-wrap {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%22260%22%20viewBox%3D%220%200%20260%20260%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23B3202C%22%20stroke-width%3D%223%22%20opacity%3D%220.05%22%20stroke-linecap%3D%22round%22%3E%3Cg%20transform%3D%22translate%2862%2066%29%20rotate%28-18%29%20scale%280.42%29%20translate%28-50%20-94%29%22%3E%3Cpath%20d%3D%22M50%2012c17%200%2030%2012%2030%2032%200%2016-6%2026-7%2040-1%2016%205%2038%201%2056-3%2014-12%2022-24%2022s-21-8-24-22c-4-18%202-40%201-56-1-14-7-24-7-40%200-20%2013-32%2030-32Z%22%2F%3E%3Cpath%20d%3D%22M50%2044C45%2055%2038%2064%2027%2071%22%2F%3E%3Cpath%20d%3D%22M50%2044c5%2011%2012%2020%2023%2027%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2239%22%20r%3D%224.5%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28192%20138%29%20rotate%2814%29%20scale%280.42%29%20translate%28-50%20-94%29%22%3E%3Cpath%20d%3D%22M50%2012c17%200%2030%2012%2030%2032%200%2016-6%2026-7%2040-1%2016%205%2038%201%2056-3%2014-12%2022-24%2022s-21-8-24-22c-4-18%202-40%201-56-1-14-7-24-7-40%200-20%2013-32%2030-32Z%22%2F%3E%3Cpath%20d%3D%22M50%2044C45%2055%2038%2064%2027%2071%22%2F%3E%3Cpath%20d%3D%22M50%2044c5%2011%2012%2020%2023%2027%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2239%22%20r%3D%224.5%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%2878%20206%29%20rotate%2826%29%20scale%280.42%29%20translate%28-50%20-94%29%22%3E%3Cpath%20d%3D%22M50%2012c17%200%2030%2012%2030%2032%200%2016-6%2026-7%2040-1%2016%205%2038%201%2056-3%2014-12%2022-24%2022s-21-8-24-22c-4-18%202-40%201-56-1-14-7-24-7-40%200-20%2013-32%2030-32Z%22%2F%3E%3Cpath%20d%3D%22M50%2044C45%2055%2038%2064%2027%2071%22%2F%3E%3Cpath%20d%3D%22M50%2044c5%2011%2012%2020%2023%2027%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2239%22%20r%3D%224.5%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  background-size: 260px 260px;
+  background-repeat: repeat;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
@@ -201,7 +206,7 @@ button {
   color: var(--accent);
   font-weight: 600;
   text-decoration: none;
-  border-bottom: 1px solid #C3D2CC;
+  border-bottom: 1px solid var(--accent-line);
   padding-bottom: 1px;
 }
 
@@ -275,7 +280,7 @@ button {
 
 .sound-toggle.is-on {
   color: var(--accent);
-  border-color: #C3D2CC;
+  border-color: var(--accent-line);
 }
 
 .sound-toggle svg {
@@ -415,6 +420,129 @@ main {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+}
+
+/* ---------- article + product illustration ---------- */
+
+.article-row {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 24px;
+  align-items: start;
+}
+
+.article-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.swatches {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 7px 8px;
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: border-color 0.18s var(--ease), color 0.18s var(--ease),
+    transform 0.18s var(--ease);
+}
+
+.swatch span {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: block;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.swatch:hover {
+  border-color: var(--accent-line);
+  color: var(--text);
+}
+
+.swatch:active {
+  transform: scale(0.96);
+}
+
+.swatch.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.product {
+  margin: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.product-img {
+  height: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chappal {
+  height: 100%;
+  width: auto;
+  overflow: visible;
+}
+
+.ch-shadow {
+  fill: rgba(28, 26, 26, 0.09);
+}
+
+/* the swap animation, re-triggered whenever article or colour changes */
+.product-img.is-swapping .chappal {
+  animation: swapIn 0.42s var(--ease) both;
+}
+
+.product-img.is-swapping .ch-strap {
+  animation: strapIn 0.5s var(--ease) 0.08s both;
+}
+
+.product-cap {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.product-code {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.product-name {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+@keyframes swapIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.94) rotate(-3deg); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes strapIn {
+  from { stroke-dasharray: 60; stroke-dashoffset: 60; }
+  to   { stroke-dasharray: 60; stroke-dashoffset: 0; }
 }
 
 /* ---------- ratio builder ---------- */
@@ -752,9 +880,9 @@ tbody tr:last-child td {
 
 .confirm {
   font-size: 14px;
-  color: var(--accent);
-  background: var(--accent-soft);
-  border: 1px solid #D4DEDA;
+  color: var(--success);
+  background: #EFF6F2;
+  border: 1px solid #CFE2D8;
   border-radius: var(--radius);
   padding: 12px 16px;
   flex: 1 1 260px;
@@ -767,6 +895,124 @@ tbody tr:last-child td {
 .hint {
   font-size: 13px;
   color: var(--muted);
+}
+
+/* ============================================================
+   MOTION
+   Entrances, state changes and micro-interactions.
+   Everything here is switched off under prefers-reduced-motion
+   at the foot of this file.
+   ============================================================ */
+
+/* page furniture drifts in on load, staggered top to bottom */
+.topbar,
+.tabs-wrap {
+  animation: fadeDown 0.4s var(--ease) both;
+}
+
+.tabs-wrap {
+  animation-delay: 0.05s;
+}
+
+.section {
+  animation: riseIn 0.45s var(--ease) both;
+}
+
+.section:nth-child(1) { animation-delay: 0.08s; }
+.section:nth-child(2) { animation-delay: 0.14s; }
+.section:nth-child(3) { animation-delay: 0.20s; }
+.section:nth-child(4) { animation-delay: 0.26s; }
+.section:nth-child(5) { animation-delay: 0.32s; }
+
+/* switching tabs fades the incoming panel up */
+.panel:not([hidden]) {
+  animation: panelIn 0.32s var(--ease) both;
+}
+
+/* the login card assembles itself */
+.login-card > * {
+  animation: riseIn 0.5s var(--ease) both;
+}
+
+.login-card > *:nth-child(1) { animation-delay: 0.05s; }
+.login-card > *:nth-child(2) { animation-delay: 0.11s; }
+.login-card > *:nth-child(3) { animation-delay: 0.17s; }
+.login-card > *:nth-child(4) { animation-delay: 0.23s; }
+.login-card > *:nth-child(5) { animation-delay: 0.29s; }
+
+/* buttons get a little physical feedback */
+.btn,
+.preset,
+.step-btn,
+.tab {
+  transition: background-color 0.18s var(--ease), color 0.18s var(--ease),
+    border-color 0.18s var(--ease), transform 0.12s var(--ease);
+}
+
+.btn:active:not(:disabled),
+.preset:active,
+.step-btn:active {
+  transform: scale(0.95);
+}
+
+.btn:not(:disabled) {
+  will-change: transform;
+}
+
+/* a value that just changed pulses once so the eye catches it */
+.bump {
+  animation: bump 0.34s var(--ease);
+}
+
+/* the big live total, when it changes */
+.pop {
+  animation: pop 0.3s var(--ease);
+}
+
+/* order lines slide in as they are added */
+.row-in {
+  animation: rowIn 0.34s var(--ease) both;
+}
+
+.row-out {
+  animation: rowOut 0.26s var(--ease) both;
+}
+
+/* the counter under the ratio builder, when the box completes */
+.counter.ok {
+  animation: bump 0.36s var(--ease);
+}
+
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes bump {
+  0%   { transform: none; }
+  35%  { transform: scale(1.14); }
+  100% { transform: none; }
+}
+
+@keyframes pop {
+  0%   { transform: none; opacity: 0.55; }
+  40%  { transform: scale(1.06); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes rowOut {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateX(14px); }
 }
 
 /* ============================================================
@@ -802,21 +1048,21 @@ tbody tr:last-child td {
 /* soft ring that expands outward once, like a ripple */
 .success-ring {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--success);
   stroke-width: 2;
   transform-origin: 60px 60px;
   animation: ringOut 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) 0.1s both;
 }
 
 .success-disc {
-  fill: var(--accent);
+  fill: var(--success);
   transform-origin: 60px 60px;
   animation: discPop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
 }
 
 .success-tick {
   fill: none;
-  stroke: #FFFDF8;
+  stroke: #FFFFFF;
   stroke-width: 9;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -844,7 +1090,7 @@ tbody tr:last-child td {
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: var(--accent);
+  color: var(--success);
   font-variant-numeric: tabular-nums;
   margin-top: 20px;
   padding-top: 20px;
@@ -891,17 +1137,16 @@ tbody tr:last-child td {
   to   { opacity: 1; transform: none; }
 }
 
-/* respect a reduced-motion preference: show the end state, no movement */
+/* respect a reduced-motion preference: show end states, no movement */
 @media (prefers-reduced-motion: reduce) {
-  .success-overlay,
-  .success-disc,
-  .success-tick,
-  .success-title,
-  .success-sub,
-  .success-order,
-  .success-meta,
-  .success-done {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 
   .success-ring {
@@ -942,6 +1187,37 @@ tbody tr:last-child td {
   .grid-2 {
     grid-template-columns: 1fr;
     gap: 18px;
+  }
+
+  .article-row {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .article-fields {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  /* illustration first on a phone — it is the thing worth looking at */
+  .product {
+    order: -1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    text-align: left;
+    padding: 14px 16px;
+  }
+
+  .product-img {
+    height: 96px;
+    flex: 0 0 72px;
+  }
+
+  .product-cap {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
   }
 
   .figures {
@@ -1037,3 +1313,16 @@ tbody tr:last-child td {
     font-size: 26px;
   }
 }
+
+/* ============================================================
+   STATE UTILITIES
+   Declared last on purpose. These are single-class selectors, so
+   a component rule of equal specificity that sets `color` later in
+   the file would otherwise beat them — which is exactly how
+   "Low stock" ended up rendering muted grey instead of amber.
+   ============================================================ */
+
+.warn { color: var(--warning); }
+.ok { color: var(--success); }
+.accent { color: var(--accent); }
+.muted { color: var(--muted); }

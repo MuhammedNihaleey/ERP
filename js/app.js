@@ -120,11 +120,30 @@ function initArticles() {
 
   artSel.addEventListener("change", function () {
     renderColours();
+    renderSwatches();
+    renderProduct();
     renderCalc();
   });
-  el("colourSelect").addEventListener("change", renderCalc);
+
+  el("colourSelect").addEventListener("change", function () {
+    renderSwatches();
+    renderProduct();
+    renderCalc();
+  });
+
+  // tapping a colour chip drives the same state as the dropdown
+  el("swatches").addEventListener("click", function (e) {
+    const btn = e.target.closest(".swatch");
+    if (!btn) return;
+    el("colourSelect").value = btn.dataset.colour;
+    renderSwatches();
+    renderProduct();
+    renderCalc();
+  });
 
   renderColours();
+  renderSwatches();
+  renderProduct();
 }
 
 function currentArticle() {
@@ -141,6 +160,100 @@ function renderColours() {
     o.textContent = col;
     sel.appendChild(o);
   });
+}
+
+// ============================================================
+// PRODUCT ILLUSTRATION
+// Drawn as inline SVG rather than shipped photos: it recolours
+// live from the colour dropdown and adds no external files.
+// ============================================================
+
+const COLOUR_HEX = {
+  Black: { body: "#2E2A29", dark: "#171514", light: "#4A4443" },
+  Brown: { body: "#7A4E2E", dark: "#4E301A", light: "#9A6A43" },
+  Blue:  { body: "#2F5488", dark: "#1D3660", light: "#4670AC" }
+};
+
+// One sole outline, transformed per family, plus a strap style each.
+// Toe at the top, viewed from above.
+const SOLE =
+  "M50 12c17 0 30 12 30 32 0 16-6 26-7 40-1 16 5 38 1 56-3 14-12 22-24 22" +
+  "s-21-8-24-22c-4-18 2-40 1-56-1-14-7-24-7-40 0-20 13-32 30-32Z";
+
+const FAMILY = {
+  // gents: full width, chunky thong strap
+  GTS: { squash: "", strap: "thong", width: 10 },
+  // ladies: narrower sole, slim band across the forefoot
+  LDS: { squash: "translate(50 87) scale(0.90 1) translate(-50 -87)", strap: "band", width: 7 },
+  // kids: short and stubby
+  KID: { squash: "translate(50 87) scale(0.96 0.82) translate(-50 -87)", strap: "thong", width: 9 }
+};
+
+function strapMarkup(style, c, w) {
+  if (style === "band") {
+    // a single band across the forefoot, plus a thin ankle-ish accent
+    return '<path d="M21 66c9-11 49-11 58 0" fill="none" stroke="' + c.dark +
+        '" stroke-width="' + w + '" stroke-linecap="round"/>' +
+      '<path d="M26 78c8-7 40-7 48 0" fill="none" stroke="' + c.dark +
+        '" stroke-width="' + (w - 2) + '" stroke-linecap="round" opacity="0.75"/>';
+  }
+  // thong: a V from the toe post out to each edge, and the post itself
+  return '<path d="M50 44C45 55 38 64 27 71" fill="none" stroke="' + c.dark +
+      '" stroke-width="' + w + '" stroke-linecap="round"/>' +
+    '<path d="M50 44c5 11 12 20 23 27" fill="none" stroke="' + c.dark +
+      '" stroke-width="' + w + '" stroke-linecap="round"/>' +
+    '<circle cx="50" cy="39" r="4.5" fill="' + c.dark + '"/>';
+}
+
+function chappalSVG(articleCode, colourName) {
+  const fam = FAMILY[articleCode.split("-")[0]] || FAMILY.GTS;
+  const c = COLOUR_HEX[colourName] || COLOUR_HEX.Black;
+
+  return '<svg class="chappal" viewBox="0 0 100 176" role="img" aria-label="' +
+    articleCode + " in " + colourName + '">' +
+      '<ellipse class="ch-shadow" cx="50" cy="167" rx="27" ry="4.5"/>' +
+      '<g' + (fam.squash ? ' transform="' + fam.squash + '"' : "") + ">" +
+        // sole, with a darker rim
+        '<path class="ch-sole" d="' + SOLE + '" fill="' + c.body +
+          '" stroke="' + c.dark + '" stroke-width="3"/>' +
+        // footbed contour, just enough to read as a shoe not a shape
+        '<path d="M31 96c12 5 26 5 38 0" fill="none" stroke="' + c.dark +
+          '" stroke-width="1.6" opacity="0.3"/>' +
+        '<path d="M33 124c11 4 23 4 34 0" fill="none" stroke="' + c.dark +
+          '" stroke-width="1.6" opacity="0.22"/>' +
+        strapMarkup(fam.strap, c, fam.width) +
+        // highlight down the left of the footbed
+        '<path class="ch-shine" d="M28 52c1-14 8-24 17-28" fill="none" stroke="' +
+          c.light + '" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>' +
+      "</g>" +
+    "</svg>";
+}
+
+function renderProduct() {
+  const art = currentArticle();
+  const colour = el("colourSelect").value;
+  const box = el("productImg");
+
+  box.innerHTML = chappalSVG(art.code, colour);
+  el("productCode").textContent = art.code;
+  el("productName").textContent = art.name + " · " + colour;
+
+  // re-trigger the swap animation
+  box.classList.remove("is-swapping");
+  void box.offsetWidth;
+  box.classList.add("is-swapping");
+}
+
+// colour chips under the dropdowns — faster to tap than a select on a phone
+function renderSwatches() {
+  const art = currentArticle();
+  const current = el("colourSelect").value;
+  el("swatches").innerHTML = art.colours.map(function (col) {
+    const c = COLOUR_HEX[col] || COLOUR_HEX.Black;
+    return '<button type="button" class="swatch' + (col === current ? " is-on" : "") +
+      '" data-colour="' + col + '" title="' + col + '" aria-label="' + col + '">' +
+      '<span style="background:' + c.body + '"></span>' + col + "</button>";
+  }).join("");
 }
 
 // ============================================================
@@ -170,6 +283,7 @@ function initRatio() {
     const next = state.ratio[i] + +btn.dataset.delta;
     state.ratio[i] = Math.max(0, Math.min(PAIRS_PER_BOX, next));
     syncRatioInputs();
+    flash(grid.querySelectorAll(".ratio-input")[i], "bump");
     renderAll();
   });
 
@@ -220,7 +334,7 @@ function renderCounter() {
   c.innerHTML =
     total + " of " + PAIRS_PER_BOX + " assigned &mdash; " + tail +
     "<small>One box = 24 pairs</small>";
-  c.classList.toggle("accent", ok);
+  c.classList.toggle("ok", ok);
   c.classList.toggle("warn", !ok);
 }
 
@@ -233,6 +347,58 @@ function renderPresetState() {
       : PRESETS[key].join(",") === cur;
     btn.classList.toggle("is-active", match);
   });
+}
+
+// ============================================================
+// MOTION HELPERS
+// ============================================================
+
+const reduceMotion = window.matchMedia &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// replay a one-shot CSS animation class
+function flash(node, cls) {
+  if (!node || reduceMotion) return;
+  node.classList.remove(cls);
+  void node.offsetWidth;
+  node.classList.add(cls);
+}
+
+// roll the headline figure to its new value instead of snapping
+let totalAnim = null;
+let lastTotal = null;
+
+function setTotalPairs(value) {
+  const node = el("calcTotalPairs");
+
+  if (lastTotal === null || reduceMotion) {
+    node.textContent = groupIndian(value);
+    lastTotal = value;
+    return;
+  }
+  if (value === lastTotal) return;
+
+  const from = lastTotal;
+  const start = performance.now();
+  const dur = 340;
+
+  if (totalAnim) cancelAnimationFrame(totalAnim);
+  flash(node, "pop");
+
+  function step(now) {
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+    node.textContent = groupIndian(Math.round(from + (value - from) * eased));
+    if (t < 1) {
+      totalAnim = requestAnimationFrame(step);
+    } else {
+      node.textContent = groupIndian(value);
+      totalAnim = null;
+    }
+  }
+
+  totalAnim = requestAnimationFrame(step);
+  lastTotal = value;
 }
 
 // ============================================================
@@ -251,7 +417,7 @@ function renderCalc() {
   const boxes = state.boxes;
   const stock = getStock(el("articleSelect").value, el("colourSelect").value);
 
-  el("calcTotalPairs").textContent = groupIndian(boxes * PAIRS_PER_BOX);
+  setTotalPairs(boxes * PAIRS_PER_BOX);
   el("calcFormula").innerHTML =
     (boxes || 0) + " boxes × " + PAIRS_PER_BOX + " pairs";
 
@@ -267,7 +433,7 @@ function renderCalc() {
     perBox += '<td class="t-strong">' + n + "</td>";
   });
   const total = ratioTotal();
-  perBox += '<td class="t-strong ' + (total === PAIRS_PER_BOX ? "accent" : "warn") + '">' + total + "</td>";
+  perBox += '<td class="t-strong ' + (total === PAIRS_PER_BOX ? "ok" : "warn") + '">' + total + "</td>";
   el("calcPerBox").innerHTML = perBox;
 
   // ordered
@@ -307,8 +473,10 @@ function renderCalc() {
 function initOrderList() {
   el("addLineBtn").addEventListener("click", function () {
     const art = currentArticle();
+    const newId = Date.now() + Math.random();
+    state.lastAddedId = newId;
     state.lines.push({
-      id: Date.now() + Math.random(),
+      id: newId,
       article: art.code,
       articleName: art.name,
       colour: el("colourSelect").value,
@@ -325,10 +493,21 @@ function initOrderList() {
     const btn = e.target.closest("[data-remove]");
     if (!btn) return;
     const id = btn.dataset.remove;
-    state.lines = state.lines.filter(function (l) { return String(l.id) !== id; });
-    el("confirmMsg").hidden = true;
-    renderOrderList();
-    updateButtons();
+    const row = btn.closest("tr");
+
+    function drop() {
+      state.lines = state.lines.filter(function (l) { return String(l.id) !== id; });
+      el("confirmMsg").hidden = true;
+      renderOrderList();
+      updateButtons();
+    }
+
+    if (reduceMotion) {
+      drop();
+    } else {
+      row.classList.add("row-out");
+      setTimeout(drop, 240);
+    }
   });
 
   el("submitBtn").addEventListener("click", function () {
@@ -358,7 +537,8 @@ function renderOrderList() {
 
   const body = el("orderBody");
   body.innerHTML = state.lines.map(function (l) {
-    return "<tr>" +
+    const isNew = l.id === state.lastAddedId;
+    return '<tr class="' + (isNew && !reduceMotion ? "row-in" : "") + '">' +
       '<td><span class="t-name">' + l.article + "</span>" +
         '<span class="t-sub">' + l.colour + "</span></td>" +
       '<td style="text-align:left" class="ratio-chip">' + l.ratio.join("-") + "</td>" +
