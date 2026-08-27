@@ -260,17 +260,6 @@ function initShop() {
     renderGrid();
   });
 
-  ["pointerdown", "pointerenter"].forEach(function (ev) {
-    el("logoRail").addEventListener(ev, function () {
-      el("logoRail").classList.add("is-paused");
-    });
-  });
-  ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) {
-    el("logoRail").addEventListener(ev, function () {
-      el("logoRail").classList.remove("is-paused");
-    });
-  });
-
   el("shopSearch").addEventListener("input", function () {
     state.search = this.value.trim().toLowerCase();
     renderShop();
@@ -297,6 +286,10 @@ function initShop() {
     showTab("order");
   });
 
+  el("bagBarGo").addEventListener("click", function () {
+    showTab("order");
+  });
+
   renderShop();
 }
 
@@ -307,6 +300,7 @@ function showTab(name) {
   document.querySelectorAll(".panel").forEach(function (p) {
     p.hidden = p.id !== "panel-" + name;
   });
+  renderBagBar();
   window.scrollTo(0, 0);
 }
 
@@ -318,8 +312,9 @@ function cardMarkup(a, opts) {
       '" style="background:' + c.body + '" title="Add in ' + col + '"></span>';
   }).join("");
 
-  return '<article class="card">' +
+  return '<article class="card" data-code="' + a.code + '">' +
     (a.isNew ? '<span class="card-flag">New</span>' : "") +
+    '<span class="card-inbag">In bag</span>' +
     (note ? '<span class="card-flag card-flag-warn">' + note + "</span>" : "") +
     '<div class="card-img">' + chappalSVG(a.code, a.colours[0]) + "</div>" +
     '<div class="card-top">' +
@@ -329,7 +324,10 @@ function cardMarkup(a, opts) {
     '<span class="card-name">' + esc(a.name) + "</span>" +
     '<span class="card-brand">' + esc(getBrand(a.brand).name) + "</span>" +
     '<div class="card-dots">' + dots + "</div>" +
-    '<button type="button" class="card-add" data-add="' + a.code + '">+ Add</button>' +
+    '<button type="button" class="card-add" data-add="' + a.code + '">' +
+      '<span class="card-add-idle">+ Add</span>' +
+      '<span class="card-add-done">&check; Added</span>' +
+    "</button>" +
   "</article>";
 }
 
@@ -360,6 +358,7 @@ function renderShop() {
     el("gridResults").innerHTML = found.length
       ? found.map(function (a) { return cardMarkup(a); }).join("")
       : '<p class="picker-none">No article matches “' + esc(state.search) + '”.</p>';
+    renderAddedStates();
     return;
   }
 
@@ -379,7 +378,15 @@ function renderShop() {
 
   renderBrands();
   renderGrid();
+  renderAddedStates();
 }
+
+// ------------------------------------------------------------
+// The company rail drifts on its own but is also a real scroller,
+// so it can be swiped or dragged anywhere at any time. Driving
+// scrollLeft (rather than a CSS transform) is what makes both
+// possible at once.
+// ------------------------------------------------------------
 
 function renderBrands() {
   function tile(b) {
@@ -391,7 +398,7 @@ function renderBrands() {
       "</button>";
   }
 
-  // the set is rendered twice so the marquee can loop seamlessly at -50%
+  // the set is rendered twice so the rail can wrap seamlessly at halfway
   const once = BRANDS.map(tile).join("");
   el("logoTrack").innerHTML = once + once;
 }
@@ -414,19 +421,163 @@ function renderGrid() {
   el("gridAll").innerHTML = list.length
     ? list.map(function (a) { return cardMarkup(a); }).join("")
     : '<p class="picker-none">Nothing in this company for that category.</p>';
+
+  renderAddedStates();
 }
 
-// a small confirmation that the tap landed, plus the badge ticking up
 function bumpBag(sourceNode) {
   flash(el("bagBtn"), "bump");
+
   const card = sourceNode.closest(".card");
-  if (card) flash(card, "card-added");
+  if (!card) return;
+
+  flash(card, "card-added");
+
+  // the button says "Added" for a moment so the tap is unmistakable
+  const btn = card.querySelector(".card-add");
+  if (!btn) return;
+  btn.classList.add("is-done");
+  clearTimeout(btn._doneTimer);
+  btn._doneTimer = setTimeout(function () {
+    btn.classList.remove("is-done");
+  }, 1400);
+}
+
+// every card for an article already in the bag keeps a standing mark
+function renderAddedStates() {
+  const inBag = {};
+  state.items.forEach(function (i) { inBag[i.code] = true; });
+
+  document.querySelectorAll("#panel-shop .card").forEach(function (card) {
+    card.classList.toggle("is-in-bag", !!inBag[card.dataset.code]);
+  });
 }
 
 function renderBagCount() {
   const n = state.items.length;
   el("bagCount").textContent = n;
   el("bagBtn").classList.toggle("has-items", n > 0);
+
+  el("bagBarCount").textContent = n + (n === 1 ? " item" : " items");
+  el("bagBarValue").textContent = rupees(orderValue());
+  renderBagBar();
+  renderAddedStates();
+}
+
+// only worth showing while browsing, and only once there is something to view
+function renderBagBar() {
+  const onShop = !el("panel-shop").hidden;
+  el("bagBar").hidden = !(onShop && state.items.length > 0);
+}
+
+// The rail drifts on its own but is also a real scroller, so it can be
+// swiped, dragged or wheeled anywhere at any time.
+//
+// Two things make that work:
+//  - position is held here as a float. The browser rounds sub-pixel scroll
+//    offsets, so a 0.45px step written to scrollLeft would read back as 0 and
+//    the rail would never move.
+//  - our own writes to scrollLeft fire scroll events too. Without ignoring
+//    those, the drift pauses itself on every frame and freezes.
+let railPaused = false;
+let railResume = null;
+let railPos = 0;
+let railAutoLeft = -1;
+
+function initRail() {
+  const rail = el("logoRail");
+  let dragging = false;
+  let startX = 0;
+  let startScroll = 0;
+  let moved = 0;
+
+  function pause() {
+    railPaused = true;
+    clearTimeout(railResume);
+  }
+
+  function resumeSoon(delay) {
+    clearTimeout(railResume);
+    railResume = setTimeout(function () {
+      railPos = rail.scrollLeft;   // carry on from wherever they left it
+      railPaused = false;
+    }, delay || 1200);
+  }
+
+  rail.addEventListener("pointerenter", pause);
+  rail.addEventListener("pointerleave", function () {
+    endDrag();
+    resumeSoon(400);
+  });
+
+  // wheel, trackpad and touch scrolling
+  rail.addEventListener("scroll", function () {
+    // ignore the scroll events our own drift causes
+    if (Math.abs(rail.scrollLeft - railAutoLeft) < 2) return;
+    if (!dragging) { pause(); resumeSoon(); }
+  }, { passive: true });
+
+  // click-and-drag for mouse users
+  rail.addEventListener("pointerdown", function (e) {
+    dragging = true;
+    moved = 0;
+    startX = e.clientX;
+    startScroll = rail.scrollLeft;
+    pause();
+    rail.classList.add("is-dragging");
+  });
+
+  rail.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    moved = Math.abs(dx);
+    if (moved > 3) {
+      rail.scrollLeft = startScroll - dx;
+      if (e.pointerType === "mouse") e.preventDefault();
+    }
+  });
+
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    rail.classList.remove("is-dragging");
+    resumeSoon();
+  }
+
+  rail.addEventListener("pointerup", endDrag);
+  rail.addEventListener("pointercancel", endDrag);
+
+  // a drag should not also register as a tap on a logo
+  rail.addEventListener("click", function (e) {
+    if (moved > 6) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+
+  if (!reduceMotion) requestAnimationFrame(stepRail);
+}
+
+// the list is rendered twice, so wrapping at the halfway mark is invisible
+function wrapRail(half) {
+  if (half <= 0) return;
+  if (railPos >= half) railPos -= half;
+  else if (railPos < 0) railPos += half;
+}
+
+function stepRail() {
+  const rail = el("logoRail");
+
+  if (railPaused || el("panel-shop").hidden) {
+    railPos = rail.scrollLeft;
+  } else {
+    railPos += 0.45;
+    wrapRail(rail.scrollWidth / 2);
+    rail.scrollLeft = railPos;
+    railAutoLeft = rail.scrollLeft;
+  }
+
+  requestAnimationFrame(stepRail);
 }
 
 // ============================================================
@@ -910,6 +1061,7 @@ initSound();
 initTabs();
 initCustomers();
 initShop();
+initRail();
 initSelected();
 renderSelected();
 renderTotals();
