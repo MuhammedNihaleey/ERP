@@ -45,8 +45,16 @@ function rupees(n) {
   return "₹" + groupIndian(n);
 }
 
+// ids are stable for the life of the page; only container contents change
+const elCache = Object.create(null);
+
 function el(id) {
-  return document.getElementById(id);
+  let node = elCache[id];
+  if (!node || !node.isConnected) {
+    node = document.getElementById(id);
+    elCache[id] = node;
+  }
+  return node;
 }
 
 function esc(str) {
@@ -199,7 +207,21 @@ function strapMarkup(style, c, w) {
     '<circle cx="50" cy="39" r="4.5" fill="' + c.dark + '"/>';
 }
 
+// the same article/colour is drawn many times across the strips and grid,
+// so build each combination once
+const svgCache = new Map();
+
 function chappalSVG(articleCode, colourName) {
+  const key = articleCode + "|" + colourName;
+  let cached = svgCache.get(key);
+  if (cached === undefined) {
+    cached = buildChappal(articleCode, colourName);
+    svgCache.set(key, cached);
+  }
+  return cached;
+}
+
+function buildChappal(articleCode, colourName) {
   const fam = FAMILY[articleCode.split("-")[0]] || FAMILY.GTS;
   const c = COLOUR_HEX[colourName] || COLOUR_HEX.Black;
   const meta = getArticle(articleCode);
@@ -315,6 +337,12 @@ function showTab(name) {
   document.querySelectorAll(".panel").forEach(function (p) {
     p.hidden = p.id !== "panel-" + name;
   });
+
+  if (name === "order" && bagDirty) {
+    bagDirty = false;
+    drawSelected();
+  }
+
   renderBagBar();
   window.scrollTo(0, 0);
 }
@@ -518,12 +546,16 @@ function applyRail() {
 
 function initRail() {
   const rail = el("logoRail");
-  let dragging = false;
+  const DRAG_SLOP = 5;          // px of movement before it counts as a drag
+
+  let pressing = false;         // finger/button is down
+  let dragging = false;         // and has moved far enough to be a drag
   let startX = 0;
   let startPos = 0;
   let moved = 0;
   let lastX = 0;
   let lastT = 0;
+  let pointerId = null;
 
   function pause() {
     railPaused = true;
@@ -540,26 +572,37 @@ function initRail() {
   });
 
   rail.addEventListener("pointerleave", function (e) {
-    if (e.pointerType === "mouse") resumeSoon(300);
+    if (e.pointerType === "mouse" && !pressing) resumeSoon(300);
   });
 
   rail.addEventListener("pointerdown", function (e) {
-    dragging = true;
+    pressing = true;
+    dragging = false;
     moved = 0;
     railVel = 0;
     startX = lastX = e.clientX;
     startPos = railPos;
     lastT = performance.now();
+    pointerId = e.pointerId;
     pause();
-    rail.classList.add("is-dragging");
-    rail.setPointerCapture && rail.setPointerCapture(e.pointerId);
+    // deliberately no setPointerCapture here: capturing on press retargets
+    // the click to the rail, and a tap would never reach the logo card
   });
 
   rail.addEventListener("pointermove", function (e) {
-    if (!dragging) return;
+    if (!pressing) return;
 
     const dx = e.clientX - startX;
     moved = Math.max(moved, Math.abs(dx));
+
+    if (!dragging) {
+      if (moved < DRAG_SLOP) return;   // still just a press
+      dragging = true;
+      rail.classList.add("is-dragging");
+      if (rail.setPointerCapture) {
+        try { rail.setPointerCapture(pointerId); } catch (err) {}
+      }
+    }
 
     const now = performance.now();
     const dt = now - lastT;
@@ -572,28 +615,36 @@ function initRail() {
     e.preventDefault();
   });
 
-  function endDrag(e) {
-    if (!dragging) return;
-    dragging = false;
-    rail.classList.remove("is-dragging");
-    if (e && e.pointerId != null && rail.releasePointerCapture) {
-      try { rail.releasePointerCapture(e.pointerId); } catch (err) {}
+  function endPress(e) {
+    if (!pressing) return;
+    pressing = false;
+
+    if (dragging) {
+      rail.classList.remove("is-dragging");
+      if (rail.releasePointerCapture && pointerId != null) {
+        try { rail.releasePointerCapture(pointerId); } catch (err) {}
+      }
+    } else {
+      railVel = 0;                     // a tap should not fling the rail
     }
+
+    dragging = false;
+    pointerId = null;
     resumeSoon();
   }
 
-  rail.addEventListener("pointerup", endDrag);
-  rail.addEventListener("pointercancel", endDrag);
+  rail.addEventListener("pointerup", endPress);
+  rail.addEventListener("pointercancel", endPress);
 
-  // a drag must not also count as a tap on a logo
+  // a drag must not also register as a tap on a logo
   rail.addEventListener("click", function (e) {
-    if (moved > 6) {
+    if (moved > DRAG_SLOP) {
       e.preventDefault();
       e.stopPropagation();
+      moved = 0;
     }
   }, true);
 
-  // trackpad / wheel
   rail.addEventListener("wheel", function (e) {
     const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     if (!d) return;
@@ -780,7 +831,20 @@ function itemValue(item) {
   return itemPairs(item) * getArticle(item.code).rate;
 }
 
+let bagDirty = false;
+
+// the bag is a separate tab: skip the DOM work while it is hidden and
+// catch up the moment it is opened
 function renderSelected() {
+  if (el("panel-order").hidden) {
+    bagDirty = true;
+    return;
+  }
+  bagDirty = false;
+  drawSelected();
+}
+
+function drawSelected() {
   const has = state.items.length > 0;
   el("selEmpty").hidden = has;
   el("sumBox").hidden = !has;

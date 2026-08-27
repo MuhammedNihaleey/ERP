@@ -24,8 +24,10 @@ const BRANDS = [
   { key: "junior",  name: "Junior Step", tagline: "Kids",             logo: "round",  colour: "#B4741A" }
 ];
 
+const BRAND_BY_KEY = new Map(BRANDS.map(function (b) { return [b.key, b]; }));
+
 function getBrand(key) {
-  return BRANDS.find(function (b) { return b.key === key; });
+  return BRAND_BY_KEY.get(key);
 }
 
 const CATEGORIES = [
@@ -152,16 +154,26 @@ function getStock(articleCode, colour) {
   return STOCK[articleCode + "|" + colour] || [0, 0, 0, 0, 0];
 }
 
-// total pairs in the godown across every colour and size of an article
-function articleStock(code) {
-  return Object.keys(STOCK).reduce(function (sum, k) {
-    if (k.split("|")[0] !== code) return sum;
-    return sum + STOCK[k].reduce(function (a, b) { return a + b; }, 0);
-  }, 0);
-}
+const ARTICLE_BY_CODE = new Map(ARTICLES.map(function (a) { return [a.code, a]; }));
 
 function getArticle(code) {
-  return ARTICLES.find(function (a) { return a.code === code; });
+  return ARTICLE_BY_CODE.get(code);
+}
+
+// total pairs in the godown per article, totalled once at load rather than
+// rescanned on every sort comparison
+const ARTICLE_STOCK = (function () {
+  const totals = Object.create(null);
+  Object.keys(STOCK).forEach(function (k) {
+    const code = k.split("|")[0];
+    const sum = STOCK[k].reduce(function (a, b) { return a + b; }, 0);
+    totals[code] = (totals[code] || 0) + sum;
+  });
+  return totals;
+})();
+
+function articleStock(code) {
+  return ARTICLE_STOCK[code] || 0;
 }
 
 const PAYMENTS = [

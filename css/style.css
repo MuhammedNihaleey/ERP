@@ -744,14 +744,6 @@ main {
   backface-visibility: hidden;
 }
 
-.logo-card { pointer-events: none; }
-
-.logo-track {
-  display: flex;
-  gap: 12px;
-  width: max-content;
-}
-
 .logo-card {
   flex: 0 0 auto;
   width: 158px;
