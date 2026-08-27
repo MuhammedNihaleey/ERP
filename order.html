@@ -20,7 +20,7 @@
     </div>
     <div class="topbar-right">
       <span class="topbar-date" id="todayDate"></span>
-      <button class="bagbtn" id="bagBtn" aria-label="Open bag">
+      <button class="bagbtn" id="bagBtn" aria-label="Open order">
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <path d="M4 6h12l-1 11H5L4 6Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
           <path d="M7.5 8V5.5a2.5 2.5 0 015 0V8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
@@ -35,7 +35,8 @@
 <div class="tabs-wrap">
   <nav class="tabs" id="tabs">
     <button class="tab is-active" data-tab="shop">Shop</button>
-    <button class="tab" data-tab="order">Bag</button>
+    <button class="tab" data-tab="order">Order</button>
+    <button class="tab" data-tab="pending">Pending Orders</button>
     <button class="tab" data-tab="customers">My Customers</button>
     <button class="tab" data-tab="stock">Stock</button>
     <button class="tab" data-tab="payments">Payments</button>
@@ -119,7 +120,7 @@
 
   </section>
 
-  <!-- ================= BAG ================= -->
+  <!-- ================= ORDER ================= -->
   <section class="panel" id="panel-order" hidden>
 
     <!-- 1. CUSTOMER -->
@@ -148,15 +149,41 @@
       </div>
     </div>
 
+    <!-- 2. ADD PRODUCTS — searchable dropdown with images -->
+    <div class="section section-dropdown">
+      <div class="section-head">
+        <h2 class="section-title"><span class="step">02</span>Add products</h2>
+        <span class="hint">Search a code or name, or browse the shop</span>
+      </div>
+
+      <div class="picker" id="picker">
+        <div class="picker-field">
+          <input type="text" id="pickerSearch" autocomplete="off"
+                 placeholder="Search article code or name">
+          <button class="picker-btn" id="pickerBtn" aria-label="Search products">
+            <svg viewBox="0 0 18 18" aria-hidden="true">
+              <circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="picker-panel" id="pickerPanel" hidden>
+          <div class="picker-cats" id="pickerCats"></div>
+          <div class="picker-list" id="pickerList"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- 3. SELECTED ITEMS -->
     <div class="section">
       <div class="section-head">
-        <h2 class="section-title"><span class="step">02</span>Items in bag</h2>
+        <h2 class="section-title"><span class="step">03</span>Items in this order</h2>
         <span class="hint" id="selCount"></span>
       </div>
 
       <div id="selEmpty" class="empty">
-        Your bag is empty. <button class="linkbtn" id="goShop">Browse the shop</button> to add products.
+        No products yet. Search above, or <button class="linkbtn" id="goShop">browse the shop</button> to add products.
       </div>
       <div class="sel-list" id="selList"></div>
 
@@ -179,10 +206,78 @@
       <div class="submit-row">
         <button class="btn" id="submitBtn" disabled>Submit order</button>
         <span class="hint warn" id="submitHint" hidden></span>
+        <span class="hint" id="submitNote">You can check everything on the next screen before it is placed.</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ================= REVIEW — the order list before it is placed ========= -->
+  <section class="panel" id="panel-review" hidden>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Order summary — check before placing</h2>
+        <button class="linkbtn" id="reviewBack">&larr; Back to edit</button>
+      </div>
+
+      <div class="review-head">
+        <div class="review-dealer">
+          <span class="label">Dealer</span>
+          <div class="review-dealer-name" id="reviewCustomer">—</div>
+          <div class="review-dealer-place" id="reviewPlace"></div>
+        </div>
+        <div class="review-stamp">
+          <span class="label">Order date</span>
+          <div class="review-stamp-value" id="reviewDate"></div>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Colour</th>
+              <th>Size ratio</th>
+              <th>Boxes</th>
+              <th>Pairs</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody id="reviewBody"></tbody>
+        </table>
+      </div>
+
+      <div class="sum">
+        <div class="sum-row"><span>Total boxes</span><span class="num" id="revBoxes">0</span></div>
+        <div class="sum-row"><span>Total pairs</span><span class="num" id="revPairs">0</span></div>
+        <div class="sum-row sum-total"><span>Order value</span><span class="num" id="revValue">&#8377;0</span></div>
+      </div>
+
+      <p class="credit-flag" id="revFlag" hidden></p>
+
+      <div class="submit-row">
+        <button class="btn" id="placeBtn">Place order</button>
+        <button class="btn-ghost" id="reviewEdit">Edit order</button>
         <div class="confirm" id="confirmMsg" hidden></div>
       </div>
     </div>
 
+  </section>
+
+  <!-- ================= PENDING ORDERS ================= -->
+  <section class="panel" id="panel-pending" hidden>
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Pending orders</h2>
+        <span class="hint" id="pendingCount"></span>
+      </div>
+
+      <nav class="cats" id="ordFilters"></nav>
+      <div class="ord-list" id="ordList"></div>
+      <p class="picker-none" id="ordNone" hidden>No orders with that status.</p>
+    </div>
   </section>
 
   <!-- ================= MY CUSTOMERS ================= -->
@@ -248,13 +343,13 @@
 
 </main>
 
-<!-- sticky shortcut to the bag, shown on the shop once something is in it -->
+<!-- sticky shortcut to the order, shown on the shop once something is in it -->
 <div class="bagbar" id="bagBar" hidden>
   <span class="bagbar-info">
     <strong id="bagBarCount">0 items</strong>
     <span class="bagbar-value num" id="bagBarValue">₹0</span>
   </span>
-  <button class="btn" id="bagBarGo">View bag →</button>
+  <button class="btn" id="bagBarGo">View order →</button>
 </div>
 
 <!-- ORDER PLACED — animated confirmation -->
@@ -269,7 +364,10 @@
     <p class="success-sub" id="successSub">Sent to office for approval</p>
     <div class="success-order" id="successOrderNo">SO-2451</div>
     <div class="success-meta" id="successMeta"></div>
-    <button class="btn success-done" id="successDone">Done</button>
+    <div class="success-actions">
+      <button class="btn success-done" id="successDone">View pending orders</button>
+      <button class="btn-ghost" id="successNew">Start new order</button>
+    </div>
   </div>
 </div>
 

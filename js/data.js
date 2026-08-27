@@ -186,3 +186,89 @@ const PAYMENTS = [
 ];
 
 let nextOrderNumber = 2451;
+
+// ============================================================
+// ORDER STATUS
+// The status of a placed order is owned elsewhere in the ERP —
+// office approves, production makes, godown dispatches. Until
+// those screens are wired up these are dummy values.
+// ============================================================
+
+const ORDER_STATUSES = {
+  pending:    { label: "Pending approval",  tone: "wait" },
+  approved:   { label: "Approved",          tone: "info" },
+  production: { label: "In production",     tone: "info" },
+  ready:      { label: "Ready to dispatch", tone: "info" },
+  dispatched: { label: "Dispatched",        tone: "go" },
+  delivered:  { label: "Delivered",         tone: "done" }
+};
+
+function getStatus(key) {
+  return ORDER_STATUSES[key] || ORDER_STATUSES.pending;
+}
+
+// Orders already in the system. A line carries its own resolved size
+// ratio, so a placed order never changes if the presets are edited later.
+const ORDERS = [
+  {
+    no: "SO-2450",
+    customerId: "c3",
+    date: "2026-08-25",
+    status: "dispatched",
+    note: "Left godown 26 Aug · LR 4471, Kerala Roadways",
+    lines: [
+      { code: "GTS-4501", colour: "Black", ratio: PRESETS.standard, boxes: 12 },
+      { code: "LDS-2201", colour: "Blue",  ratio: PRESETS.large,    boxes: 6 }
+    ]
+  },
+  {
+    no: "SO-2449",
+    customerId: "c1",
+    date: "2026-08-24",
+    status: "production",
+    note: "Expected off the line 29 Aug",
+    lines: [
+      { code: "GTS-4610", colour: "Brown", ratio: PRESETS.standard, boxes: 10 },
+      { code: "GTS-4820", colour: "Black", ratio: PRESETS.small,    boxes: 4 },
+      { code: "KID-1310", colour: "Blue",  ratio: PRESETS.standard, boxes: 8 }
+    ]
+  },
+  {
+    no: "SO-2448",
+    customerId: "c5",
+    date: "2026-08-22",
+    status: "approved",
+    note: "Approved by office, waiting on production slot",
+    lines: [
+      { code: "LDS-2415", colour: "Black", ratio: PRESETS.large, boxes: 5 }
+    ]
+  },
+  {
+    no: "SO-2447",
+    customerId: "c2",
+    date: "2026-08-20",
+    status: "pending",
+    note: "Held at office — dealer is over credit limit",
+    lines: [
+      { code: "GTS-4705", colour: "Black", ratio: PRESETS.standard, boxes: 15 },
+      { code: "KID-1102", colour: "Black", ratio: PRESETS.small,    boxes: 6 }
+    ]
+  },
+  {
+    no: "SO-2446",
+    customerId: "c6",
+    date: "2026-08-16",
+    status: "delivered",
+    note: "Received at shop 19 Aug",
+    lines: [
+      { code: "LDS-2310", colour: "Brown", ratio: PRESETS.standard, boxes: 7 },
+      { code: "GTS-4502", colour: "Black", ratio: PRESETS.standard, boxes: 9 }
+    ]
+  }
+];
+
+const CUSTOMER_BY_ID = new Map(CUSTOMERS.map(function (c) { return [c.id, c]; }));
+
+function getCustomer(id) {
+  return CUSTOMER_BY_ID.get(id);
+}

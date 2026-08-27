@@ -81,7 +81,11 @@ const state = {
   items: [],          // { id, code, colour, preset, boxes }
   category: "all",
   brand: null,
-  search: ""
+  search: "",
+  // the order page's own picker keeps its filters separate from the shop's
+  pickerCat: "all",
+  pickerSearch: "",
+  ordFilter: "all"
 };
 
 let nextItemId = 1;
@@ -330,18 +334,27 @@ function initShop() {
   renderShop();
 }
 
+// the review screen has no tab of its own — it belongs to the Order tab
+const TAB_FOR_PANEL = { review: "order" };
+
 function showTab(name) {
+  const lit = TAB_FOR_PANEL[name] || name;
+
   document.querySelectorAll(".tab").forEach(function (t) {
-    t.classList.toggle("is-active", t.dataset.tab === name);
+    t.classList.toggle("is-active", t.dataset.tab === lit);
   });
   document.querySelectorAll(".panel").forEach(function (p) {
     p.hidden = p.id !== "panel-" + name;
   });
 
+  if (name !== "order") closePicker();
+
   if (name === "order" && bagDirty) {
     bagDirty = false;
     drawSelected();
   }
+
+  if (name === "pending") renderPendingTab();
 
   renderBagBar();
   window.scrollTo(0, 0);
@@ -357,7 +370,7 @@ function cardMarkup(a, opts) {
 
   return '<article class="card" data-code="' + a.code + '">' +
     (a.isNew ? '<span class="card-flag">New</span>' : "") +
-    '<span class="card-inbag">In bag</span>' +
+    '<span class="card-inbag">Added</span>' +
     (note ? '<span class="card-flag card-flag-warn">' + note + "</span>" : "") +
     '<div class="card-img">' + chappalSVG(a.code, a.colours[0]) + "</div>" +
     '<div class="card-top">' +
@@ -485,7 +498,7 @@ function bumpBag(sourceNode) {
   flash(card.querySelector("[data-qty]"), "bump");
 }
 
-// every card for an article already in the bag keeps a standing mark
+// every card for an article already in the order keeps a standing mark
 function renderAddedStates() {
   document.querySelectorAll("#panel-shop .card").forEach(function (card) {
     const boxes = articleBoxes(card.dataset.code);
@@ -505,6 +518,27 @@ function renderBagCount() {
   el("bagBarValue").textContent = rupees(orderValue());
   renderBagBar();
   renderAddedStates();
+  renderPickerAdded();
+}
+
+// the picker rows carry the same standing "N added" mark as the shop cards
+function renderPickerAdded() {
+  document.querySelectorAll("#pickerList .prow").forEach(function (row) {
+    const boxes = articleBoxes(row.dataset.code);
+    row.classList.toggle("is-in-bag", boxes > 0);
+
+    let tag = row.querySelector(".prow-added");
+    if (boxes > 0) {
+      if (!tag) {
+        tag = document.createElement("span");
+        tag.className = "prow-added";
+        row.querySelector(".prow-code").appendChild(tag);
+      }
+      tag.textContent = boxes + " added";
+    } else if (tag) {
+      tag.remove();
+    }
+  });
 }
 
 // only worth showing while browsing, and only once there is something to view
@@ -681,6 +715,122 @@ function stepRail(now) {
 }
 
 // ============================================================
+// 2b. PRODUCT PICKER — the searchable dropdown on the order page.
+// Same products as the shop, but reachable without leaving the order.
+// ============================================================
+
+function initPicker() {
+  el("pickerCats").innerHTML =
+    [{ key: "all", label: "All" }].concat(CATEGORIES).map(function (c) {
+      return '<button type="button" class="pcat' +
+        (c.key === state.pickerCat ? " is-active" : "") +
+        '" data-cat="' + c.key + '">' + c.label + "</button>";
+    }).join("");
+
+  el("pickerCats").addEventListener("click", function (e) {
+    const btn = e.target.closest(".pcat");
+    if (!btn) return;
+    state.pickerCat = btn.dataset.cat;
+    document.querySelectorAll(".pcat").forEach(function (c) {
+      c.classList.toggle("is-active", c.dataset.cat === state.pickerCat);
+    });
+    renderPickerList();
+  });
+
+  el("pickerSearch").addEventListener("input", function () {
+    state.pickerSearch = this.value.trim().toLowerCase();
+    openPicker();
+    renderPickerList();
+  });
+
+  el("pickerSearch").addEventListener("focus", openPicker);
+
+  el("pickerBtn").addEventListener("click", function () {
+    if (el("pickerPanel").hidden) {
+      openPicker();
+      el("pickerSearch").focus();
+    } else {
+      closePicker();
+    }
+  });
+
+  // a row adds the article; a colour dot adds it in that colour
+  el("pickerList").addEventListener("click", function (e) {
+    const dot = e.target.closest("[data-colour]");
+    const row = e.target.closest(".prow");
+    if (!row) return;
+    addItem(row.dataset.code, dot ? dot.dataset.colour : null);
+    flash(row, "card-added");
+    flash(el("bagBtn"), "bump");
+  });
+
+  // clicking away closes the panel
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest("#picker")) closePicker();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closePicker();
+  });
+
+  renderPickerList();
+}
+
+function openPicker() {
+  el("pickerPanel").hidden = false;
+  el("picker").classList.add("is-open");
+}
+
+function closePicker() {
+  el("pickerPanel").hidden = true;
+  el("picker").classList.remove("is-open");
+}
+
+function pickerArticles() {
+  return ARTICLES.filter(function (a) {
+    if (state.pickerCat !== "all" && a.category !== state.pickerCat) return false;
+    if (!state.pickerSearch) return true;
+    return (a.code + " " + a.name + " " + getBrand(a.brand).name)
+      .toLowerCase().indexOf(state.pickerSearch) !== -1;
+  });
+}
+
+function renderPickerList() {
+  const list = pickerArticles();
+  const box = el("pickerList");
+
+  if (list.length === 0) {
+    box.innerHTML = '<p class="picker-none">No article matches \u201C' +
+      esc(state.pickerSearch) + '\u201D.</p>';
+    return;
+  }
+
+  box.innerHTML = list.map(function (a) {
+    const dots = a.colours.map(function (col) {
+      const c = COLOUR_HEX[col] || COLOUR_HEX.Black;
+      return '<span class="prow-dot" data-colour="' + col +
+        '" style="background:' + c.body + '" title="Add in ' + col + '"></span>';
+    }).join("");
+
+    const boxes = articleBoxes(a.code);
+
+    return '<button type="button" class="prow' + (boxes > 0 ? " is-in-bag" : "") +
+        '" data-code="' + a.code + '">' +
+      '<span class="prow-img">' + chappalSVG(a.code, a.colours[0]) + "</span>" +
+      '<span class="prow-main">' +
+        '<span class="prow-code">' + a.code +
+          (boxes > 0 ? '<span class="prow-added">' + boxes + " added</span>" : "") +
+        "</span>" +
+        '<span class="prow-name">' + esc(a.name) + " \u00B7 " +
+          esc(getBrand(a.brand).name) + "</span>" +
+        '<span class="prow-dots">' + dots + "</span>" +
+      "</span>" +
+      '<span class="prow-rate num">' + rupees(a.rate) + "</span>" +
+    "</button>";
+  }).join("");
+}
+
+// ============================================================
 // 3. SELECTED ITEMS
 // ============================================================
 
@@ -765,8 +915,9 @@ function initSelected() {
     }
   });
 
-  el("submitBtn").addEventListener("click", submitOrder);
-  el("successDone").addEventListener("click", closeSuccess);
+  el("submitBtn").addEventListener("click", openReview);
+  el("successDone").addEventListener("click", function () { closeSuccess("pending"); });
+  el("successNew").addEventListener("click", function () { closeSuccess("shop"); });
 }
 
 function addItem(code, colour) {
@@ -833,7 +984,7 @@ function itemValue(item) {
 
 let bagDirty = false;
 
-// the bag is a separate tab: skip the DOM work while it is hidden and
+// the order is a separate tab: skip the DOM work while it is hidden and
 // catch up the moment it is opened
 function renderSelected() {
   if (el("panel-order").hidden) {
@@ -977,12 +1128,20 @@ function renderTotals() {
   flash(el("sumValue"), "pop");
 
   const allValid = state.items.every(itemValid);
-  el("submitBtn").disabled = state.items.length === 0 || !allValid;
+  const empty = state.items.length === 0;
+  const noDealer = !state.customer;
+
+  el("submitBtn").disabled = empty || !allValid || noDealer;
   renderBagCount();
 
   const hint = el("submitHint");
-  hint.hidden = allValid || state.items.length === 0;
-  hint.textContent = "One item's custom ratio doesn't add up to 24 pairs.";
+  const problem = !allValid
+    ? "One item's custom ratio doesn't add up to 24 pairs."
+    : noDealer ? "Select a dealer at the top before submitting." : "";
+
+  hint.hidden = empty || !problem;
+  hint.textContent = problem;
+  el("submitNote").hidden = empty || !!problem;
 
   renderCredit(value);
 }
@@ -1095,25 +1254,123 @@ function playChime() {
 // ORDER PLACED — animated confirmation
 // ============================================================
 
-function submitOrder() {
+// ============================================================
+// REVIEW — the order list, shown between Submit and Place order
+// ============================================================
+
+function initReview() {
+  el("reviewBack").addEventListener("click", function () { showTab("order"); });
+  el("reviewEdit").addEventListener("click", function () { showTab("order"); });
+  el("placeBtn").addEventListener("click", placeOrder);
+}
+
+function openReview() {
+  if (state.items.length === 0 || !state.customer) return;
+  closePicker();
+  renderReview();
+  showTab("review");
+}
+
+function isoToday() {
+  const d = new Date();
+  return d.getFullYear() + "-" +
+    String(d.getMonth() + 1).padStart(2, "0") + "-" +
+    String(d.getDate()).padStart(2, "0");
+}
+
+function renderReview() {
+  const c = state.customer;
+
+  el("reviewCustomer").textContent = c ? c.name : "\u2014";
+  el("reviewPlace").textContent = c ? c.place : "";
+  el("reviewDate").textContent = formatDate(isoToday());
+
+  el("reviewBody").innerHTML = state.items.map(function (it) {
+    const art = getArticle(it.code);
+    const col = COLOUR_HEX[it.colour] || COLOUR_HEX.Black;
+
+    return "<tr>" +
+      '<td><span class="rev-cell">' +
+        '<span class="rev-img">' + chappalSVG(it.code, it.colour) + "</span>" +
+        '<span><span class="t-name">' + it.code + "</span>" +
+          '<span class="t-sub">' + esc(art.name) + " \u00B7 " +
+            esc(getBrand(art.brand).name) + "</span></span>" +
+      "</span></td>" +
+      '<td class="muted"><span class="rev-dot" style="background:' + col.body +
+        '"></span>' + it.colour + "</td>" +
+      '<td class="muted num">' + ratioFor(it).join("-") + "</td>" +
+      '<td class="t-strong">' + it.boxes + "</td>" +
+      '<td class="t-strong">' + groupIndian(itemPairs(it)) + "</td>" +
+      '<td class="t-strong">' + rupees(itemValue(it)) + "</td>" +
+    "</tr>";
+  }).join("");
+
+  const boxes = state.items.reduce(function (a, i) { return a + i.boxes; }, 0);
+  const pairs = state.items.reduce(function (a, i) { return a + itemPairs(i); }, 0);
+  const value = orderValue();
+
+  el("revBoxes").textContent = groupIndian(boxes);
+  el("revPairs").textContent = groupIndian(pairs);
+  el("revValue").textContent = rupees(value);
+
+  const headroom = c ? c.creditLimit - c.outstanding - value : 0;
+  const flag = el("revFlag");
+  flag.hidden = headroom >= 0;
+  if (headroom < 0) {
+    flag.textContent = "Exceeds credit limit by " + rupees(Math.abs(headroom)) +
+      " \u2014 the order will be held for office approval.";
+  }
+
+  el("confirmMsg").hidden = true;
+}
+
+// ============================================================
+// ORDER PLACED — animated confirmation
+// ============================================================
+
+function placeOrder() {
+  const c = state.customer;
+  if (!c || state.items.length === 0) return;
+
   const orderNo = "SO-" + nextOrderNumber;
   nextOrderNumber++;
 
   const boxes = state.items.reduce(function (a, i) { return a + i.boxes; }, 0);
   const pairs = state.items.reduce(function (a, i) { return a + itemPairs(i); }, 0);
   const value = orderValue();
+  const over = (c.creditLimit - c.outstanding - value) < 0;
+
+  // A placed order keeps its own copy of every line, resolved ratio and all,
+  // so later edits to the working order can never reach back into it.
+  ORDERS.unshift({
+    no: orderNo,
+    customerId: c.id,
+    date: isoToday(),
+    status: "pending",
+    note: over
+      ? "Held at office \u2014 dealer is over credit limit"
+      : "Waiting for office approval",
+    lines: state.items.map(function (it) {
+      return {
+        code: it.code,
+        colour: it.colour,
+        ratio: ratioFor(it).slice(),
+        boxes: it.boxes
+      };
+    })
+  });
+
+  renderPendingTab();
 
   const msg = el("confirmMsg");
-  msg.textContent = "Order sent to office for approval — Order no. " + orderNo;
+  msg.textContent = "Order placed \u2014 Order no. " + orderNo;
   msg.hidden = false;
 
   el("successOrderNo").textContent = orderNo;
   el("successMeta").textContent =
-    state.items.length + (state.items.length === 1 ? " item" : " items") + " · " +
-    groupIndian(boxes) + " boxes · " + groupIndian(pairs) + " pairs · " + rupees(value);
+    state.items.length + (state.items.length === 1 ? " item" : " items") + " \u00B7 " +
+    groupIndian(boxes) + " boxes \u00B7 " + groupIndian(pairs) + " pairs \u00B7 " + rupees(value);
 
-  const c = state.customer;
-  const over = c && (c.creditLimit - c.outstanding - value) < 0;
   el("successSub").textContent = over
     ? "Held for credit approval at office"
     : "Sent to office for approval";
@@ -1134,25 +1391,172 @@ function restartAnimations(root) {
   nodes.forEach(function (n) { n.style.animation = ""; });
 }
 
-function closeSuccess() {
+function closeSuccess(dest) {
   if (el("successOverlay").hidden) return;
   el("successOverlay").hidden = true;
-  startNewOrder();
+  startNewOrder(dest || "pending");
 }
 
-function startNewOrder() {
+function startNewOrder(dest) {
   state.items = [];
   state.search = "";
+  state.pickerSearch = "";
   el("shopSearch").value = "";
+  el("pickerSearch").value = "";
+  el("confirmMsg").hidden = true;
   renderShop();
+  renderPickerList();
   renderSelected();
   renderTotals();
-  showTab("shop");
+  showTab(dest === "shop" ? "shop" : "pending");
 }
 
 document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") closeSuccess();
+  if (e.key === "Escape") closeSuccess("pending");
 });
+
+// ============================================================
+// PENDING ORDERS
+// Status is owned by office / production / godown — dummy for now.
+// ============================================================
+
+const ORDER_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Awaiting approval", has: ["pending"] },
+  { key: "making", label: "In production", has: ["approved", "production", "ready"] },
+  { key: "dispatched", label: "Dispatched", has: ["dispatched"] },
+  { key: "delivered", label: "Delivered", has: ["delivered"] }
+];
+
+function initPending() {
+  el("ordFilters").innerHTML = ORDER_FILTERS.map(function (f) {
+    return '<button type="button" class="cat' +
+      (f.key === state.ordFilter ? " is-active" : "") +
+      '" data-filter="' + f.key + '">' + f.label + "</button>";
+  }).join("");
+
+  el("ordFilters").addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-filter]");
+    if (!btn) return;
+    state.ordFilter = btn.dataset.filter;
+    document.querySelectorAll("#ordFilters .cat").forEach(function (c) {
+      c.classList.toggle("is-active", c.dataset.filter === state.ordFilter);
+    });
+    renderPendingTab();
+  });
+
+  // an order opens to show the lines it was placed with
+  el("ordList").addEventListener("click", function (e) {
+    const head = e.target.closest(".ord-head");
+    if (!head) return;
+    const card = head.closest(".ord");
+    const open = card.classList.toggle("is-open");
+    card.querySelector(".ord-body").hidden = !open;
+    head.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  renderPendingTab();
+}
+
+function lineRatioTotal(line) {
+  return line.ratio.reduce(function (a, b) { return a + b; }, 0);
+}
+
+function linePairs(line) {
+  return line.boxes * lineRatioTotal(line);
+}
+
+function lineValue(line) {
+  const art = getArticle(line.code);
+  return art ? linePairs(line) * art.rate : 0;
+}
+
+function orderTotals(order) {
+  return order.lines.reduce(function (t, l) {
+    t.boxes += l.boxes;
+    t.pairs += linePairs(l);
+    t.value += lineValue(l);
+    return t;
+  }, { boxes: 0, pairs: 0, value: 0 });
+}
+
+function filteredOrders() {
+  const f = ORDER_FILTERS.find(function (x) { return x.key === state.ordFilter; });
+  if (!f || !f.has) return ORDERS;
+  return ORDERS.filter(function (o) { return f.has.indexOf(o.status) !== -1; });
+}
+
+function renderPendingTab() {
+  const list = filteredOrders();
+  const awaiting = ORDERS.filter(function (o) {
+    return o.status !== "delivered";
+  }).length;
+
+  el("pendingCount").textContent =
+    awaiting + (awaiting === 1 ? " order open" : " orders open");
+
+  el("ordNone").hidden = list.length > 0;
+
+  el("ordList").innerHTML = list.map(function (o) {
+    const c = getCustomer(o.customerId);
+    const st = getStatus(o.status);
+    const t = orderTotals(o);
+    const items = o.lines.length;
+
+    const lines = o.lines.map(function (l) {
+      const art = getArticle(l.code);
+      const col = COLOUR_HEX[l.colour] || COLOUR_HEX.Black;
+      return '<div class="ordline">' +
+        '<span class="ordline-img">' + chappalSVG(l.code, l.colour) + "</span>" +
+        '<span class="ordline-main">' +
+          '<span class="ordline-code">' + l.code + "</span>" +
+          '<span class="ordline-name">' + esc(art ? art.name : "") + "</span>" +
+        "</span>" +
+        '<span class="ordline-meta num">' +
+          '<span class="rev-dot" style="background:' + col.body + '"></span>' +
+          l.colour + " \u00B7 " + l.ratio.join("-") + " \u00B7 " + l.boxes +
+          (l.boxes === 1 ? " box" : " boxes") + " \u00B7 " +
+          groupIndian(linePairs(l)) + " pairs</span>" +
+        '<span class="ordline-value num">' + rupees(lineValue(l)) + "</span>" +
+      "</div>";
+    }).join("");
+
+    return '<article class="ord" data-no="' + o.no + '">' +
+      '<button type="button" class="ord-head" aria-expanded="false">' +
+        '<span class="ord-id">' +
+          '<span class="ord-no">' + o.no + "</span>" +
+          '<span class="ord-date">' + formatDate(o.date) + "</span>" +
+        "</span>" +
+        '<span class="ord-who">' +
+          '<span class="ord-name">' + esc(c ? c.name : "Unknown dealer") + "</span>" +
+          '<span class="ord-place">' + esc(c ? c.place : "") + "</span>" +
+        "</span>" +
+        '<span class="ord-figs">' +
+          '<span class="ord-value num">' + rupees(t.value) + "</span>" +
+          '<span class="ord-meta num">' + items +
+            (items === 1 ? " item \u00B7 " : " items \u00B7 ") +
+            groupIndian(t.boxes) + " boxes \u00B7 " +
+            groupIndian(t.pairs) + " pairs</span>" +
+        "</span>" +
+        '<span class="ord-status" data-tone="' + st.tone + '">' + st.label + "</span>" +
+        '<span class="ord-chev" aria-hidden="true">' +
+          '<svg viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" ' +
+            'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+            'stroke-linejoin="round"/></svg>' +
+        "</span>" +
+      "</button>" +
+      '<div class="ord-body" hidden>' +
+        (o.note ? '<p class="ord-note">' + esc(o.note) + "</p>" : "") +
+        '<div class="ord-lines">' + lines + "</div>" +
+        '<div class="ord-foot">' +
+          "<span>Order value</span>" +
+          '<span class="num">' + rupees(t.value) + "</span>" +
+        "</div>" +
+      "</div>" +
+    "</article>";
+  }).join("");
+}
+
 
 // ============================================================
 // READ-ONLY TABS
@@ -1216,7 +1620,10 @@ initTabs();
 initCustomers();
 initShop();
 initRail();
+initPicker();
 initSelected();
+initReview();
+initPending();
 renderSelected();
 renderTotals();
 renderCustomersTab();
