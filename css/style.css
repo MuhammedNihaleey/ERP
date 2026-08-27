@@ -726,25 +726,25 @@ main {
 
 .logo-rail {
   position: relative;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overflow: hidden;
   cursor: grab;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;          /* horizontal is ours, vertical scrolls the page */
   -webkit-mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
   mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
 }
 
-.logo-rail::-webkit-scrollbar { display: none; }
+.logo-rail.is-dragging { cursor: grabbing; }
+.logo-rail.is-dragging .logo-card { pointer-events: none; }
 
-.logo-rail.is-dragging {
-  cursor: grabbing;
-  scroll-behavior: auto;
+.logo-track {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
-.logo-rail.is-dragging .logo-card { pointer-events: none; }
+.logo-card { pointer-events: none; }
 
 .logo-track {
   display: flex;
@@ -915,13 +915,13 @@ main {
 /* keep the last row clear of the fixed bar */
 #panel-shop { padding-bottom: 76px; }
 
-/* ---------- add / added states on a card ---------- */
+/* ---------- add / quantity on a card ---------- */
+
+.card-cta { margin-top: 12px; }
 
 .card-add {
-  position: relative;
-  margin-top: 12px;
-  padding: 8px 10px;
   width: 100%;
+  padding: 8px 10px;
   font-size: 13px;
   font-weight: 600;
   color: var(--accent);
@@ -939,16 +939,47 @@ main {
 
 .card-add:active { transform: scale(0.97); }
 
-.card-add-done { display: none; }
-
-.card-add.is-done {
-  background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
+/* the stepper that replaces it once the article is in the bag */
+.card-qty {
+  display: none;
+  align-items: stretch;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
-.card-add.is-done .card-add-idle { display: none; }
-.card-add.is-done .card-add-done { display: inline; }
+.card.is-in-bag .card-add { display: none; }
+.card.is-in-bag .card-qty { display: flex; }
+
+.card-step {
+  flex: 0 0 34px;
+  padding: 0;
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: 0;
+  border-radius: 0;
+  transition: background-color 0.15s var(--ease);
+}
+
+.card-step:hover { background: var(--accent-dark); }
+.card-step:active { transform: scale(0.94); }
+
+.card-qty-num {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 /* standing marker while the article is in the bag */
 .card-inbag {
@@ -972,7 +1003,6 @@ main {
   background: var(--accent-soft);
 }
 
-/* the New flag steps aside when both are showing */
 .card.is-in-bag .card-flag:not(.card-flag-warn) { display: none; }
 
 /* category tabs */

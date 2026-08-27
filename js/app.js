@@ -271,6 +271,21 @@ function initShop() {
 
   // every card lives in a container that delegates up to here
   document.getElementById("panel-shop").addEventListener("click", function (e) {
+    const inc = e.target.closest("[data-inc]");
+    if (inc) {
+      e.preventDefault();
+      incArticle(inc.dataset.inc);
+      bumpBag(inc);
+      return;
+    }
+
+    const dec = e.target.closest("[data-dec]");
+    if (dec) {
+      e.preventDefault();
+      decArticle(dec.dataset.dec);
+      return;
+    }
+
     const add = e.target.closest("[data-add]");
     if (!add) return;
     e.preventDefault();
@@ -324,10 +339,16 @@ function cardMarkup(a, opts) {
     '<span class="card-name">' + esc(a.name) + "</span>" +
     '<span class="card-brand">' + esc(getBrand(a.brand).name) + "</span>" +
     '<div class="card-dots">' + dots + "</div>" +
-    '<button type="button" class="card-add" data-add="' + a.code + '">' +
-      '<span class="card-add-idle">+ Add</span>' +
-      '<span class="card-add-done">&check; Added</span>' +
-    "</button>" +
+    '<div class="card-cta">' +
+      '<button type="button" class="card-add" data-add="' + a.code + '">+ Add</button>' +
+      '<div class="card-qty">' +
+        '<button type="button" class="card-step" data-dec="' + a.code +
+          '" aria-label="Remove a box of ' + a.code + '">&minus;</button>' +
+        '<span class="card-qty-num" data-qty="' + a.code + '">1 added</span>' +
+        '<button type="button" class="card-step" data-inc="' + a.code +
+          '" aria-label="Add a box of ' + a.code + '">+</button>' +
+      "</div>" +
+    "</div>" +
   "</article>";
 }
 
@@ -401,6 +422,7 @@ function renderBrands() {
   // the set is rendered twice so the rail can wrap seamlessly at halfway
   const once = BRANDS.map(tile).join("");
   el("logoTrack").innerHTML = once + once;
+  if (typeof applyRail === "function") applyRail();
 }
 
 function renderGrid() {
@@ -432,24 +454,17 @@ function bumpBag(sourceNode) {
   if (!card) return;
 
   flash(card, "card-added");
-
-  // the button says "Added" for a moment so the tap is unmistakable
-  const btn = card.querySelector(".card-add");
-  if (!btn) return;
-  btn.classList.add("is-done");
-  clearTimeout(btn._doneTimer);
-  btn._doneTimer = setTimeout(function () {
-    btn.classList.remove("is-done");
-  }, 1400);
+  flash(card.querySelector("[data-qty]"), "bump");
 }
 
 // every card for an article already in the bag keeps a standing mark
 function renderAddedStates() {
-  const inBag = {};
-  state.items.forEach(function (i) { inBag[i.code] = true; });
-
   document.querySelectorAll("#panel-shop .card").forEach(function (card) {
-    card.classList.toggle("is-in-bag", !!inBag[card.dataset.code]);
+    const boxes = articleBoxes(card.dataset.code);
+    card.classList.toggle("is-in-bag", boxes > 0);
+
+    const num = card.querySelector("[data-qty]");
+    if (num) num.textContent = boxes + " added";
   });
 }
 
@@ -470,26 +485,45 @@ function renderBagBar() {
   el("bagBar").hidden = !(onShop && state.items.length > 0);
 }
 
-// The rail drifts on its own but is also a real scroller, so it can be
-// swiped, dragged or wheeled anywhere at any time.
+// ------------------------------------------------------------
+// COMPANY RAIL
 //
-// Two things make that work:
-//  - position is held here as a float. The browser rounds sub-pixel scroll
-//    offsets, so a 0.45px step written to scrollLeft would read back as 0 and
-//    the rail would never move.
-//  - our own writes to scrollLeft fire scroll events too. Without ignoring
-//    those, the drift pauses itself on every frame and freezes.
+// The drift runs on a composited transform rather than scrollLeft.
+// Writing scrollLeft each frame makes the browser round the offset to
+// whole pixels, so a sub-pixel step lurches instead of gliding — that
+// was the stutter. translate3d takes fractional values and stays on
+// the GPU, so it holds a steady frame rate.
+//
+// Dragging moves the same value, which is what lets it be swiped
+// anywhere at any moment, with a little inertia on release.
+// ------------------------------------------------------------
+
+const RAIL_SPEED = 0.032;      // px per millisecond (~32px/s)
+let railPos = 0;               // px scrolled, always within [0, half)
 let railPaused = false;
 let railResume = null;
-let railPos = 0;
-let railAutoLeft = -1;
+let railVel = 0;               // px/ms, carried after a flick
+let railLast = 0;
+
+function railHalf() {
+  const track = el("logoTrack");
+  return track ? track.offsetWidth / 2 : 0;
+}
+
+function applyRail() {
+  const half = railHalf();
+  if (half > 0) railPos = ((railPos % half) + half) % half;
+  el("logoTrack").style.transform = "translate3d(" + (-railPos) + "px,0,0)";
+}
 
 function initRail() {
   const rail = el("logoRail");
   let dragging = false;
   let startX = 0;
-  let startScroll = 0;
+  let startPos = 0;
   let moved = 0;
+  let lastX = 0;
+  let lastT = 0;
 
   function pause() {
     railPaused = true;
@@ -498,56 +532,60 @@ function initRail() {
 
   function resumeSoon(delay) {
     clearTimeout(railResume);
-    railResume = setTimeout(function () {
-      railPos = rail.scrollLeft;   // carry on from wherever they left it
-      railPaused = false;
-    }, delay || 1200);
+    railResume = setTimeout(function () { railPaused = false; }, delay || 1400);
   }
 
-  rail.addEventListener("pointerenter", pause);
-  rail.addEventListener("pointerleave", function () {
-    endDrag();
-    resumeSoon(400);
+  rail.addEventListener("pointerenter", function (e) {
+    if (e.pointerType === "mouse") pause();
   });
 
-  // wheel, trackpad and touch scrolling
-  rail.addEventListener("scroll", function () {
-    // ignore the scroll events our own drift causes
-    if (Math.abs(rail.scrollLeft - railAutoLeft) < 2) return;
-    if (!dragging) { pause(); resumeSoon(); }
-  }, { passive: true });
+  rail.addEventListener("pointerleave", function (e) {
+    if (e.pointerType === "mouse") resumeSoon(300);
+  });
 
-  // click-and-drag for mouse users
   rail.addEventListener("pointerdown", function (e) {
     dragging = true;
     moved = 0;
-    startX = e.clientX;
-    startScroll = rail.scrollLeft;
+    railVel = 0;
+    startX = lastX = e.clientX;
+    startPos = railPos;
+    lastT = performance.now();
     pause();
     rail.classList.add("is-dragging");
+    rail.setPointerCapture && rail.setPointerCapture(e.pointerId);
   });
 
   rail.addEventListener("pointermove", function (e) {
     if (!dragging) return;
+
     const dx = e.clientX - startX;
-    moved = Math.abs(dx);
-    if (moved > 3) {
-      rail.scrollLeft = startScroll - dx;
-      if (e.pointerType === "mouse") e.preventDefault();
-    }
+    moved = Math.max(moved, Math.abs(dx));
+
+    const now = performance.now();
+    const dt = now - lastT;
+    if (dt > 0) railVel = -(e.clientX - lastX) / dt;
+    lastX = e.clientX;
+    lastT = now;
+
+    railPos = startPos - dx;
+    applyRail();
+    e.preventDefault();
   });
 
-  function endDrag() {
+  function endDrag(e) {
     if (!dragging) return;
     dragging = false;
     rail.classList.remove("is-dragging");
+    if (e && e.pointerId != null && rail.releasePointerCapture) {
+      try { rail.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
     resumeSoon();
   }
 
   rail.addEventListener("pointerup", endDrag);
   rail.addEventListener("pointercancel", endDrag);
 
-  // a drag should not also register as a tap on a logo
+  // a drag must not also count as a tap on a logo
   rail.addEventListener("click", function (e) {
     if (moved > 6) {
       e.preventDefault();
@@ -555,26 +593,37 @@ function initRail() {
     }
   }, true);
 
+  // trackpad / wheel
+  rail.addEventListener("wheel", function (e) {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (!d) return;
+    railPos += d;
+    applyRail();
+    pause();
+    resumeSoon();
+    e.preventDefault();
+  }, { passive: false });
+
+  applyRail();
   if (!reduceMotion) requestAnimationFrame(stepRail);
 }
 
-// the list is rendered twice, so wrapping at the halfway mark is invisible
-function wrapRail(half) {
-  if (half <= 0) return;
-  if (railPos >= half) railPos -= half;
-  else if (railPos < 0) railPos += half;
-}
+// time-based so the speed is identical on 60Hz and 120Hz screens
+function stepRail(now) {
+  const dt = railLast ? Math.min(now - railLast, 50) : 16;
+  railLast = now;
 
-function stepRail() {
-  const rail = el("logoRail");
-
-  if (railPaused || el("panel-shop").hidden) {
-    railPos = rail.scrollLeft;
-  } else {
-    railPos += 0.45;
-    wrapRail(rail.scrollWidth / 2);
-    rail.scrollLeft = railPos;
-    railAutoLeft = rail.scrollLeft;
+  if (!el("panel-shop").hidden) {
+    if (Math.abs(railVel) > 0.004) {
+      // glide out a flick
+      railPos += railVel * dt;
+      railVel *= Math.pow(0.9975, dt);
+      applyRail();
+    } else if (!railPaused) {
+      railVel = 0;
+      railPos += RAIL_SPEED * dt;
+      applyRail();
+    }
   }
 
   requestAnimationFrame(stepRail);
@@ -687,6 +736,42 @@ function addItem(code, colour) {
   renderTotals();
 }
 
+function articleBoxes(code) {
+  return state.items.reduce(function (a, i) {
+    return i.code === code ? a + i.boxes : a;
+  }, 0);
+}
+
+// tapping + on a card adjusts the line most recently added for that article,
+// so two colours of the same article stay as two separate lines
+function lastItemFor(code) {
+  for (let i = state.items.length - 1; i >= 0; i--) {
+    if (state.items[i].code === code) return state.items[i];
+  }
+  return null;
+}
+
+function incArticle(code) {
+  const item = lastItemFor(code);
+  if (!item) { addItem(code, null); return; }
+  item.boxes += 1;
+  afterQtyChange();
+}
+
+function decArticle(code) {
+  const item = lastItemFor(code);
+  if (!item) return;
+  if (item.boxes > 1) item.boxes -= 1;
+  else state.items = state.items.filter(function (i) { return i !== item; });
+  afterQtyChange();
+}
+
+function afterQtyChange() {
+  el("confirmMsg").hidden = true;
+  renderSelected();
+  renderTotals();
+}
+
 function itemPairs(item) {
   return item.boxes * ratioTotal(item);
 }
@@ -726,7 +811,12 @@ function renderSelected() {
       "</label>";
     }).join("");
 
-    const boxOpts = BOX_OPTIONS.map(function (n) {
+    // include the current value so a stepped count like 7 still shows
+    const opts = BOX_OPTIONS.indexOf(it.boxes) === -1
+      ? BOX_OPTIONS.concat([it.boxes]).sort(function (a, b) { return a - b; })
+      : BOX_OPTIONS;
+
+    const boxOpts = opts.map(function (n) {
       return '<option value="' + n + '"' +
         (n === it.boxes ? " selected" : "") + ">" + n +
         (n === 1 ? " box" : " boxes") + "</option>";
