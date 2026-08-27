@@ -1260,7 +1260,6 @@ function playChime() {
 
 function initReview() {
   el("reviewBack").addEventListener("click", function () { showTab("order"); });
-  el("reviewEdit").addEventListener("click", function () { showTab("order"); });
   el("placeBtn").addEventListener("click", placeOrder);
 }
 
