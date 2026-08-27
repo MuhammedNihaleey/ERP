@@ -743,72 +743,115 @@ main {
   color: var(--muted);
 }
 
-/* ---------- company / brand tiles ---------- */
+/* ---------- company logo rail ---------- */
 
-.company-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 10px;
+.logo-rail {
+  position: relative;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
 }
 
-.company {
+.logo-track {
   display: flex;
-  align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  width: max-content;
+  animation: logoSlide 38s linear infinite;
+}
+
+.logo-rail.is-paused .logo-track,
+.logo-rail:hover .logo-track {
+  animation-play-state: paused;
+}
+
+@keyframes logoSlide {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.logo-card {
+  flex: 0 0 auto;
+  width: 158px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 16px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  text-align: left;
   font-family: inherit;
-  color: var(--text);
   transition: border-color 0.18s var(--ease), transform 0.18s var(--ease);
 }
 
-.company:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-}
+.logo-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 
-.company.is-active {
+.logo-card.is-active {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
 
-.company-mark {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: 12px;
+.logo-word {
+  font-size: 16px;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: var(--bc, var(--accent));
 }
 
-.company-text { flex: 1 1 auto; min-width: 0; }
+/* each house brand gets its own wordmark treatment */
+.logo-word[data-logo="block"] {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 3px 7px;
+  background: var(--bc, var(--accent));
+  color: #FFFFFF;
+  border-radius: 2px;
+}
 
-.company-name {
-  display: block;
+.logo-word[data-logo="slant"] {
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+
+.logo-word[data-logo="spaced"] {
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  font-weight: 600;
   font-size: 14px;
-  font-weight: 700;
 }
 
-.company-tag {
-  display: block;
-  font-size: 11px;
-  color: var(--muted);
+.logo-word[data-logo="soft"] {
+  text-transform: lowercase;
+  letter-spacing: -0.03em;
+  font-size: 19px;
 }
 
-.company-count {
-  flex: 0 0 auto;
+.logo-word[data-logo="dot"]::after {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: super;
+}
+
+.logo-word[data-logo="round"] {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   font-size: 13px;
-  font-weight: 700;
+}
+
+.logo-tag {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .company-active {
@@ -1511,6 +1554,15 @@ tbody tr:last-child td {
     scroll-behavior: auto !important;
   }
 
+  .logo-track {
+    animation: none !important;
+    width: auto;
+  }
+
+  .logo-rail {
+    overflow-x: auto;
+  }
+
   .success-ring {
     display: none;
   }
@@ -1583,11 +1635,11 @@ tbody tr:last-child td {
   .shop-search { max-width: none; }
 
   .card-grid { grid-template-columns: 1fr 1fr; }
-  .company-grid { grid-template-columns: 1fr 1fr; }
-  .company { padding: 10px; gap: 9px; }
-  .company-mark { width: 30px; height: 30px; font-size: 11px; }
-  .company-name { font-size: 13px; }
-  .company-tag { display: none; }
+  .logo-card { width: 132px; padding: 13px 10px; }
+  .logo-word { font-size: 14px; }
+  .logo-word[data-logo="soft"] { font-size: 16px; }
+  .logo-word[data-logo="spaced"] { font-size: 12px; letter-spacing: 0.22em; }
+  .logo-tag { font-size: 9px; }
   .strip .card { flex: 0 0 150px; }
   .card-img { height: 92px; }
   .card { padding: 12px; }

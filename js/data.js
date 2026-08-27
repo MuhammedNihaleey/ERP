@@ -14,13 +14,14 @@ const PRESETS = {
 
 // House brands under the Sample Footwear group.
 // These are invented names — deliberately not real-world footwear brands.
+// logo: how the wordmark is drawn (see .logo-word variants in the CSS)
 const BRANDS = [
-  { key: "classic", name: "SF Classic", tagline: "Everyday gents" },
-  { key: "stride",  name: "Stride Pro", tagline: "Premium comfort" },
-  { key: "terra",   name: "Terra",      tagline: "Value range" },
-  { key: "breeze",  name: "Breeze",     tagline: "Ladies daily" },
-  { key: "bloom",   name: "Bloom",      tagline: "Ladies premium" },
-  { key: "junior",  name: "Junior Step", tagline: "Kids" }
+  { key: "classic", name: "SF Classic",  tagline: "Everyday gents",   logo: "block",  colour: "#B3202C" },
+  { key: "stride",  name: "Stride Pro",  tagline: "Premium comfort",  logo: "slant",  colour: "#1C1A1A" },
+  { key: "terra",   name: "Terra",       tagline: "Value range",      logo: "spaced", colour: "#7A4E2E" },
+  { key: "breeze",  name: "Breeze",      tagline: "Ladies daily",     logo: "soft",   colour: "#2F5488" },
+  { key: "bloom",   name: "Bloom",       tagline: "Ladies premium",   logo: "dot",    colour: "#B3202C" },
+  { key: "junior",  name: "Junior Step", tagline: "Kids",             logo: "round",  colour: "#B4741A" }
 ];
 
 function getBrand(key) {

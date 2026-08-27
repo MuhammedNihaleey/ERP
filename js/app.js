@@ -244,8 +244,8 @@ function initShop() {
     renderGrid();
   });
 
-  el("brandGrid").addEventListener("click", function (e) {
-    const tile = e.target.closest(".company");
+  el("logoRail").addEventListener("click", function (e) {
+    const tile = e.target.closest(".logo-card");
     if (!tile) return;
     state.brand = tile.dataset.brand;
     renderGrid();
@@ -258,6 +258,17 @@ function initShop() {
   el("brandClear").addEventListener("click", function () {
     state.brand = null;
     renderGrid();
+  });
+
+  ["pointerdown", "pointerenter"].forEach(function (ev) {
+    el("logoRail").addEventListener(ev, function () {
+      el("logoRail").classList.add("is-paused");
+    });
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) {
+    el("logoRail").addEventListener(ev, function () {
+      el("logoRail").classList.remove("is-paused");
+    });
   });
 
   el("shopSearch").addEventListener("input", function () {
@@ -371,31 +382,25 @@ function renderShop() {
 }
 
 function renderBrands() {
-  el("brandGrid").innerHTML = BRANDS.map(function (b) {
-    const n = ARTICLES.filter(function (a) { return a.brand === b.key; }).length;
-    // two letters either way: initials for multi-word, first two otherwise,
-    // so Breeze and Bloom don't both collapse to "B"
-    const words = b.name.split(" ");
-    const initials = (words.length > 1
-      ? words[0][0] + words[1][0]
-      : b.name.slice(0, 2)).toUpperCase();
+  function tile(b) {
+    return '<button type="button" class="logo-card" data-brand="' + b.key +
+        '" title="' + esc(b.name) + '">' +
+        '<span class="logo-word" data-logo="' + b.logo +
+          '" style="--bc:' + b.colour + '">' + esc(b.name) + "</span>" +
+        '<span class="logo-tag">' + esc(b.tagline) + "</span>" +
+      "</button>";
+  }
 
-    return '<button type="button" class="company" data-brand="' + b.key + '">' +
-      '<span class="company-mark">' + initials + "</span>" +
-      '<span class="company-text">' +
-        '<span class="company-name">' + esc(b.name) + "</span>" +
-        '<span class="company-tag">' + esc(b.tagline) + "</span>" +
-      "</span>" +
-      '<span class="company-count num">' + n + "</span>" +
-    "</button>";
-  }).join("");
+  // the set is rendered twice so the marquee can loop seamlessly at -50%
+  const once = BRANDS.map(tile).join("");
+  el("logoTrack").innerHTML = once + once;
 }
 
 function renderGrid() {
   const list = matchingArticles();
   const brand = state.brand ? getBrand(state.brand) : null;
 
-  document.querySelectorAll(".company").forEach(function (t) {
+  document.querySelectorAll(".logo-card").forEach(function (t) {
     t.classList.toggle("is-active", t.dataset.brand === state.brand);
   });
 
