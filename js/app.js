@@ -787,17 +787,57 @@ function initPicker() {
     if (e.key === "Escape") closePicker();
   });
 
+  // a rotation across the breakpoint would leave the sheet half applied
+  window.addEventListener("resize", function () {
+    if (el("pickerPanel").hidden) return;
+    if (isSheet() !== el("picker").classList.contains("is-sheet")) closePicker();
+  });
+
   renderPickerList();
+}
+
+// On a phone the picker is a full-screen sheet: the search field travels
+// with it, so focusing the input cannot scroll the page out from under it.
+function isSheet() {
+  return !!(window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
+}
+
+let lockedY = 0;
+let pageLocked = false;
+
+function lockPage() {
+  if (pageLocked) return;
+  lockedY = window.pageYOffset || document.documentElement.scrollTop || 0;
+  document.body.style.top = -lockedY + "px";
+  document.body.classList.add("is-locked");
+  pageLocked = true;
+}
+
+function unlockPage() {
+  if (!pageLocked) return;
+  document.body.classList.remove("is-locked");
+  document.body.style.top = "";
+  pageLocked = false;
+  window.scrollTo(0, lockedY);
 }
 
 function openPicker() {
   el("pickerPanel").hidden = false;
   el("picker").classList.add("is-open");
+
+  if (isSheet()) {
+    el("picker").classList.add("is-sheet");
+    document.body.classList.add("picker-sheet");
+    lockPage();
+  }
 }
 
 function closePicker() {
   el("pickerPanel").hidden = true;
   el("picker").classList.remove("is-open");
+  el("picker").classList.remove("is-sheet");
+  document.body.classList.remove("picker-sheet");
+  unlockPage();
 }
 
 function pickerArticles() {
