@@ -115,6 +115,19 @@ select {
   padding-right: 32px;
 }
 
+/* iOS Safari zooms the page whenever a text field it focuses is under 16px,
+   which shunts the layout sideways on every tap into a search box. Touch
+   devices get 16px so that never fires. Selects are deliberately left out:
+   they open a native picker rather than zooming, and the item rows rely on
+   their compact size. */
+@media (pointer: coarse) {
+  input[type="text"],
+  input[type="password"],
+  input[type="number"] {
+    font-size: 16px;
+  }
+}
+
 button {
   font-family: inherit;
   font-size: 14px;
@@ -650,12 +663,45 @@ main {
   animation: panelIn 0.18s var(--ease) both;
 }
 
-.picker-cats {
+.picker-head {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
 }
+
+.picker-cats {
+  display: flex;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.picker-cats::-webkit-scrollbar { display: none; }
+
+.picker-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+
+.picker-close:hover {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+.picker-close svg { width: 14px; height: 14px; display: block; }
 
 .pcat {
   padding: 5px 12px;
@@ -765,6 +811,32 @@ main {
   font-size: 15px;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* stays put while the list scrolls, so there is always a way out */
+.picker-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.picker-foot-info {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-done {
+  flex: 0 0 auto;
+  padding: 8px 20px;
+  font-size: 13px;
 }
 
 .strip-section { padding-bottom: 22px; }
@@ -1954,6 +2026,11 @@ tbody tr:last-child td {
   to   { opacity: 1; transform: none; }
 }
 
+@keyframes sheetIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
 @keyframes panelIn {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
@@ -2184,9 +2261,42 @@ tbody tr:last-child td {
     margin-top: 0;
   }
 
-  /* picker panel gets more room on a phone */
+  /* On a phone the dropdown becomes a bottom sheet. The old absolute panel
+     hung below the field, so once the list was scrolled its close controls
+     could sit off screen and the only way out was a tap on empty space. */
   .picker { max-width: none; }
-  .picker-list { max-height: 60vh; }
+
+  .picker-panel {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+    border-width: 1px 0 0;
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -10px 30px rgba(28, 26, 26, 0.18);
+    animation: sheetIn 0.22s var(--ease) both;
+  }
+
+  .picker-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .picker-head,
+  .picker-foot { flex: 0 0 auto; }
+
+  .picker-foot {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .picker-close { width: 34px; height: 34px; }
+  .picker-done { padding: 10px 22px; font-size: 14px; }
 
   .shop-search { max-width: none; }
 

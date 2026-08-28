@@ -539,6 +539,11 @@ function renderPickerAdded() {
       tag.remove();
     }
   });
+
+  const n = state.items.length;
+  el("pickerFootInfo").textContent = n === 0
+    ? "Nothing added yet"
+    : n + (n === 1 ? " item in this order" : " items in this order");
 }
 
 // only worth showing while browsing, and only once there is something to view
@@ -762,6 +767,15 @@ function initPicker() {
     addItem(row.dataset.code, dot ? dot.dataset.colour : null);
     flash(row, "card-added");
     flash(el("bagBtn"), "bump");
+  });
+
+  el("pickerClose").addEventListener("click", closePicker);
+
+  // the footer button is the way out once the list has been scrolled —
+  // the tap-outside target is off-screen by then
+  el("pickerDone").addEventListener("click", function () {
+    closePicker();
+    el("pickerSearch").blur();
   });
 
   // clicking away closes the panel
