@@ -77,6 +77,14 @@
         <h2 class="section-title">Order book by stage</h2>
         <span class="hint">Every order in the system</span>
       </div>
+      <figure class="chart">
+        <div class="chart-rows" id="chartStage"></div>
+        <p class="chart-note">
+          Bar length is the value of the orders sitting at that stage.
+          Rejected orders are left out — they are in the table below.
+        </p>
+      </figure>
+
       <div class="table-scroll">
         <table>
           <thead>
@@ -98,6 +106,10 @@
         <h2 class="section-title">By salesman</h2>
         <span class="hint">Live order book, rejected orders excluded</span>
       </div>
+      <figure class="chart">
+        <div class="chart-rows" id="chartSalesman"></div>
+      </figure>
+
       <div class="table-scroll">
         <table>
           <thead>
@@ -118,6 +130,10 @@
         <h2 class="section-title">Top dealers</h2>
         <span class="hint">By value on the order book</span>
       </div>
+      <figure class="chart">
+        <div class="chart-rows" id="chartDealer"></div>
+      </figure>
+
       <div class="table-scroll">
         <table>
           <thead>
@@ -131,6 +147,16 @@
           <tbody id="dealerBody"></tbody>
         </table>
       </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">How much credit each dealer has used</h2>
+        <span class="hint">A full bar means the dealer is at their limit</span>
+      </div>
+      <figure class="chart">
+        <div class="chart-rows" id="chartCredit"></div>
+      </figure>
     </div>
 
   </section>
@@ -168,6 +194,11 @@
         <h2 class="section-title">Purchase orders</h2>
         <span class="hint" id="poCount"></span>
       </div>
+      <figure class="chart">
+        <div class="chart-rows" id="chartPoStage"></div>
+        <p class="chart-note">Bar length is the value of the purchase orders at that stage.</p>
+      </figure>
+
       <div class="table-scroll">
         <table>
           <thead>
@@ -190,6 +221,14 @@
         <h2 class="section-title">Material on hand</h2>
         <span class="hint">Anything under its reorder level is flagged</span>
       </div>
+      <figure class="chart">
+        <div class="chart-rows" id="chartMaterial"></div>
+        <p class="chart-note">
+          A full bar means the material is at the level the factory wants held.
+          Anything short of full needs buying in.
+        </p>
+      </figure>
+
       <div class="table-scroll">
         <table>
           <thead>
@@ -209,6 +248,10 @@
       <div class="section-head">
         <h2 class="section-title">Suppliers</h2>
       </div>
+      <figure class="chart">
+        <div class="chart-rows" id="chartSupplier"></div>
+      </figure>
+
       <div class="table-scroll">
         <table>
           <thead>
@@ -345,6 +388,7 @@
 <script src="js/data.js"></script>
 <script src="js/common.js"></script>
 <script src="js/store.js"></script>
+<script src="js/charts.js"></script>
 <script src="js/office.js"></script>
 </body>
 </html>

@@ -455,6 +455,25 @@ function renderSalesTab() {
     (overdue.length === 1 ? " invoice" : " invoices") + " over 30 days";
   el("kpiOutstandingNote").classList.toggle("warn", overdue.length > 0);
 
+  // The stages an order actually travels through, in order. Rejected is a
+  // dead end rather than a stage, so it stays out of the chart and is
+  // reported in the table underneath instead.
+  const pipeline = STAGE_ROWS.filter(function (r) { return r.key !== "rejected"; });
+
+  chartBars("chartStage", pipeline.map(function (row) {
+    const list = ORDERS.filter(function (o) { return o.status === row.key; });
+    const t = list.reduce(function (acc, o) { return acc + orderTotals(o).value; }, 0);
+    return {
+      label: row.label,
+      sub: list.length + (list.length === 1 ? " order" : " orders"),
+      value: t,
+      display: rupees(t),
+      tip: row.label + " \u2014 " + list.length +
+        (list.length === 1 ? " order worth " : " orders worth ") + rupees(t) +
+        (list.length ? " \u00B7 " + list.map(function (o) { return o.no; }).join(", ") : "")
+    };
+  }), { empty: "No orders on the book yet." });
+
   // by stage
   el("stageBody").innerHTML = STAGE_ROWS.map(function (row) {
     const list = ORDERS.filter(function (o) { return o.status === row.key; });
@@ -491,6 +510,20 @@ function renderSalesTab() {
     return byName[b].value - byName[a].value;
   });
 
+  chartBars("chartSalesman", names.map(function (n) {
+    const r = byName[n];
+    return {
+      label: n,
+      sub: r.orders + (r.orders === 1 ? " order" : " orders") +
+        (r.pending > 0 ? " \u00B7 " + r.pending + " waiting" : ""),
+      value: r.value,
+      display: rupees(r.value),
+      tip: n + " \u2014 " + rupees(r.value) + " across " + r.orders +
+        (r.orders === 1 ? " order" : " orders") +
+        (r.pending > 0 ? ", " + r.pending + " still waiting on the office" : "")
+    };
+  }), { empty: "No orders on the book yet." });
+
   el("salesmanBody").innerHTML = names.length === 0
     ? '<tr><td colspan="4" class="muted">No orders on the book.</td></tr>'
     : names.map(function (n) {
@@ -505,6 +538,27 @@ function renderSalesTab() {
           "</tr>";
       }).join("");
 
+  // How much of each dealer's credit limit is already used up. The end of
+  // the track is the limit, so a full bar needs no explaining.
+  chartMeters("chartCredit", CUSTOMERS.slice().sort(function (a, b) {
+    return (b.outstanding / b.creditLimit) - (a.outstanding / a.creditLimit);
+  }).map(function (c) {
+    const pct = (c.outstanding / c.creditLimit) * 100;
+    const st = creditState(pct);
+    return {
+      label: c.name,
+      sub: c.place + " \u00B7 limit " + rupees(c.creditLimit),
+      pct: pct,
+      display: Math.round(pct) + "%",
+      state: st.state,
+      stateLabel: st.label,
+      tip: c.name + " \u2014 " + rupees(c.outstanding) + " outstanding of a " +
+        rupees(c.creditLimit) + " limit (" + Math.round(pct) + "%). " +
+        rupees(c.creditLimit - c.outstanding) + " of headroom left" +
+        (c.overdueDays > 0 ? ", " + c.overdueDays + " days overdue" : "") + "."
+    };
+  }));
+
   // top dealers
   const byDealer = Object.create(null);
   live.forEach(function (o) {
@@ -516,6 +570,20 @@ function renderSalesTab() {
   const ids = Object.keys(byDealer).sort(function (a, b) {
     return byDealer[b].value - byDealer[a].value;
   });
+
+  chartBars("chartDealer", ids.map(function (id) {
+    const c = getCustomer(id);
+    const r = byDealer[id];
+    return {
+      label: c ? c.name : id,
+      sub: (c ? c.place + " \u00B7 " : "") + r.orders +
+        (r.orders === 1 ? " order" : " orders"),
+      value: r.value,
+      display: rupees(r.value),
+      tip: (c ? c.name : id) + " \u2014 " + rupees(r.value) + " on the book, " +
+        (c ? rupees(c.outstanding) + " still outstanding" : "")
+    };
+  }), { empty: "No orders on the book yet." });
 
   el("dealerBody").innerHTML = ids.length === 0
     ? '<tr><td colspan="4" class="muted">No orders on the book.</td></tr>'
@@ -560,6 +628,24 @@ function renderPurchaseTab() {
 
   el("poCount").textContent = open.length + " open · " + rupees(committed) + " committed";
 
+  // the stages a purchase order moves through, in order
+  const PO_STAGES = ["raised", "sent", "partial", "received", "closed"];
+
+  chartBars("chartPoStage", PO_STAGES.map(function (key) {
+    const list = PURCHASES.filter(function (p) { return p.status === key; });
+    const value = list.reduce(function (a, p) { return a + p.value; }, 0);
+    return {
+      label: getPurchaseStatus(key).label,
+      sub: list.length + (list.length === 1 ? " order" : " orders"),
+      value: value,
+      display: rupees(value),
+      tip: getPurchaseStatus(key).label + " \u2014 " + list.length +
+        (list.length === 1 ? " purchase order worth " : " purchase orders worth ") +
+        rupees(value) +
+        (list.length ? " \u00B7 " + list.map(function (p) { return p.no; }).join(", ") : "")
+    };
+  }), { empty: "No purchase orders raised." });
+
   el("poBody").innerHTML = PURCHASES.map(function (p) {
     const s = getSupplier(p.supplierId);
     const st = getPurchaseStatus(p.status);
@@ -576,6 +662,27 @@ function renderPurchaseTab() {
       "</tr>";
   }).join("");
 
+  // Stock against the level the factory wants held. A full bar is "at level",
+  // so anything short of full is what needs buying in.
+  chartMeters("chartMaterial", MATERIALS.slice().sort(function (a, b) {
+    return (a.onHand / a.reorder) - (b.onHand / b.reorder);
+  }).map(function (m) {
+    const pct = (m.onHand / m.reorder) * 100;
+    const st = coverState(pct);
+    return {
+      label: m.name,
+      sub: groupIndian(m.onHand) + " of " + groupIndian(m.reorder) + " " + m.unit,
+      pct: pct,
+      display: Math.round(pct) + "%",
+      state: st.state,
+      stateLabel: st.label,
+      tip: m.name + " \u2014 " + groupIndian(m.onHand) + " " + m.unit +
+        " on hand against a reorder level of " + groupIndian(m.reorder) + " (" +
+        Math.round(pct) + "%)." +
+        (pct < 100 ? " Short by " + groupIndian(m.reorder - m.onHand) + " " + m.unit + "." : "")
+    };
+  }));
+
   el("materialBody").innerHTML = MATERIALS.map(function (m) {
     const low = m.onHand < m.reorder;
     const cover = Math.round((m.onHand / m.reorder) * 100);
@@ -588,6 +695,25 @@ function renderPurchaseTab() {
         (low ? '<span class="t-sub warn">Reorder</span>' : "") + "</td>" +
       "</tr>";
   }).join("");
+
+  chartBars("chartSupplier", SUPPLIERS.map(function (s) {
+    const theirs = PURCHASES.filter(function (p) {
+      return p.supplierId === s.id && OPEN_PO.indexOf(p.status) !== -1;
+    });
+    const value = theirs.reduce(function (a, p) { return a + p.value; }, 0);
+    return {
+      label: s.name,
+      sub: s.supplies,
+      value: value,
+      display: value > 0 ? rupees(value) : "\u2014",
+      tip: s.name + " (" + s.place + ") \u2014 " +
+        (theirs.length
+          ? rupees(value) + " committed on " + theirs.length +
+            (theirs.length === 1 ? " open order" : " open orders")
+          : "nothing open right now") + ". Supplies " + s.supplies + "."
+    };
+  }).sort(function (a, b) { return b.value - a.value; }),
+    { empty: "No open purchase orders." });
 
   el("supplierBody").innerHTML = SUPPLIERS.map(function (s) {
     const theirs = PURCHASES.filter(function (p) {
@@ -677,6 +803,7 @@ function renderAll() {
 
 if (me) {
   renderWho();
+  initCharts();
   initTabs();
   initOrders();
   renderAll();
