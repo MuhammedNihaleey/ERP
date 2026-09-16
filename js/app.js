@@ -1456,35 +1456,6 @@ function toast(msg) {
   toastTimer = setTimeout(function () { box.hidden = true; }, 4200);
 }
 
-// The stages an order travels through, in order. Rejected is a dead end
-// rather than a stage, so it is only shown when the salesman actually has
-// one — an empty "Rejected" bar on every visit reads like a warning.
-const MY_STAGES = PIPELINE_KEYS.map(function (key) {
-  return { key: key, label: getStatus(key).label };
-});
-
-function renderMyStageChart(list) {
-  const stages = MY_STAGES.slice();
-
-  if (list.some(function (o) { return o.status === "rejected"; })) {
-    stages.push({ key: "rejected", label: "Rejected" });
-  }
-
-  chartBars("chartMyStage", stages.map(function (s) {
-    const at = list.filter(function (o) { return o.status === s.key; });
-    const value = at.reduce(function (a, o) { return a + orderTotals(o).value; }, 0);
-    return {
-      label: s.label,
-      sub: at.length + (at.length === 1 ? " order" : " orders"),
-      value: value,
-      display: rupees(value),
-      tip: s.label + " \u2014 " + at.length +
-        (at.length === 1 ? " order worth " : " orders worth ") + rupees(value) +
-        (at.length ? " \u00B7 " + at.map(function (o) { return o.no; }).join(", ") : "")
-    };
-  }), { empty: "You have not placed an order yet." });
-}
-
 function renderPendingTab() {
   renderOrdFilter();
 
@@ -1502,7 +1473,6 @@ function renderPendingTab() {
 
   renderDecisionLead(mine);
   renderPendingBadge();
-  renderMyStageChart(mine);
 
   el("ordNone").hidden = list.length > 0;
 
@@ -1586,34 +1556,6 @@ function renderStockTab() {
 }
 
 function renderPaymentsTab() {
-  // One row per dealer, not per invoice: a dealer with two bills apart would
-  // otherwise appear twice under the same name. The bars are ordered by the
-  // amount they encode, so the chart reads top-down as a ranking; the table
-  // underneath keeps the invoice-by-invoice detail.
-  const owed = Object.create(null);
-  PAYMENTS.forEach(function (p) {
-    const row = owed[p.customer] ||
-      (owed[p.customer] = { amount: 0, bills: 0, worst: 0 });
-    row.amount += p.amount;
-    row.bills++;
-    row.worst = Math.max(row.worst, p.overdueDays);
-  });
-
-  chartBars("chartOwed", Object.keys(owed).map(function (name) {
-    const r = owed[name];
-    return {
-      label: name,
-      sub: r.bills + (r.bills === 1 ? " invoice \u00B7 " : " invoices \u00B7 ") +
-        r.worst + " days overdue",
-      value: r.amount,
-      display: rupees(r.amount),
-      tip: name + " owes " + rupees(r.amount) + " across " + r.bills +
-        (r.bills === 1 ? " invoice" : " invoices") +
-        ", the oldest " + r.worst + " days overdue."
-    };
-  }).sort(function (a, b) { return b.value - a.value; }),
-    { empty: "Nothing outstanding." });
-
   el("paymentsBody").innerHTML = PAYMENTS.map(function (p) {
     const late = p.overdueDays > 30;
     return "<tr>" +
@@ -1631,7 +1573,6 @@ function renderPaymentsTab() {
 
 if (me) {
   renderWho();
-  initCharts();
   renderDate();
   initSound();
   initTabs();

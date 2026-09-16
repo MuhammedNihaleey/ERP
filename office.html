@@ -70,17 +70,24 @@
       <div class="pickrow">
         <label class="pickrow-label" for="salesView">Show me</label>
         <select id="salesView">
-          <option value="stage">Orders by stage</option>
-          <option value="salesman">Orders by salesman</option>
-          <option value="dealer">Orders by dealer</option>
           <option value="credit">Credit used by each dealer</option>
+          <option value="dealer">Orders by dealer</option>
+          <option value="salesman">Orders by salesman</option>
         </select>
       </div>
 
-      <figure class="chart">
+      <figure class="chart" id="salesChartWrap">
         <div class="chart-rows" id="salesChart"></div>
-        <p class="chart-note" id="salesNote"></p>
       </figure>
+
+      <div class="table-scroll" id="salesTableWrap" hidden>
+        <table>
+          <thead><tr id="salesHead"></tr></thead>
+          <tbody id="salesBody"></tbody>
+        </table>
+      </div>
+
+      <p class="chart-note" id="salesNote"></p>
     </div>
 
   </section>
@@ -114,28 +121,22 @@
         <select id="purchaseView">
           <option value="material">What needs buying</option>
           <option value="orders">Purchase orders</option>
-          <option value="supplier">Spend by supplier</option>
+          <option value="supplier">Suppliers</option>
         </select>
       </div>
 
-      <figure class="chart">
+      <figure class="chart" id="purchaseChartWrap">
         <div class="chart-rows" id="purchaseChart"></div>
-        <p class="chart-note" id="purchaseNote"></p>
       </figure>
 
-      <div class="table-scroll" id="poTableWrap" hidden>
+      <div class="table-scroll" id="purchaseTableWrap" hidden>
         <table>
-          <thead>
-            <tr>
-              <th>Order</th>
-              <th>Supplier</th>
-              <th>Value</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="poBody"></tbody>
+          <thead><tr id="purchaseHead"></tr></thead>
+          <tbody id="purchaseBody"></tbody>
         </table>
       </div>
+
+      <p class="chart-note" id="purchaseNote"></p>
     </div>
 
   </section>

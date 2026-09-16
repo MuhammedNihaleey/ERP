@@ -2830,11 +2830,6 @@ tbody tr:last-child td {
   animation: barGrow 0.45s var(--ease) both;
 }
 
-/* a genuine zero gets no bar at all, rather than the 3px floor */
-.chart-bar.is-zero {
-  min-width: 0;
-}
-
 @keyframes barGrow {
   from { width: 0; }
 }

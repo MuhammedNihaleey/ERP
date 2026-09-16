@@ -1,65 +1,22 @@
 // ============================================================
-// SAMPLE FOOTWEAR ERP — charts
+// SAMPLE FOOTWEAR ERP — meters
 //
-// Two forms only, both deliberately plain: a horizontal bar list
-// for "compare these amounts", and a meter for "how much of the
-// limit is used". Nothing to learn how to read.
+// One picture, used in two places: "how close is this to its
+// limit?" — a dealer against their credit limit, a material
+// against the amount the factory wants held.
 //
-// Built from ordinary HTML rather than SVG, so a long dealer name
-// or a big rupee figure simply wraps or sits outside the bar —
-// text is never clipped by its own bar, and the whole thing
-// reflows on a phone for free.
+// A meter has a FIXED scale: the end of the track is the limit
+// itself, so a full bar always means the same thing wherever you
+// see it. That is deliberate. Ordinary bar charts were tried here
+// and taken out again: they scale to whatever the biggest value
+// happens to be, so the top bar is always full and a reader
+// cannot tell "this is a lot" from "this is merely the largest
+// of five similar numbers".
 //
-// Every bar carries its own value as text, and every chart sits
-// directly above the table of the same numbers, so nothing here
-// is readable only by eye or only on hover.
+// Built from ordinary HTML rather than SVG, so a long material
+// name simply wraps — text is never clipped by its own bar — and
+// the whole thing reflows on a phone for free.
 // ============================================================
-
-const BAR_MIN_PCT = 0;   // truthful widths; a 3px floor is applied in CSS
-
-// ---------- horizontal bars: compare amounts ----------
-//
-// rows: [{ label, sub, value, display, tip }]
-//   label   — the category, e.g. "In production"
-//   sub     — a quieter second line, e.g. "1 order"
-//   value   — the number the bar length encodes
-//   display — how the value is written out, e.g. "₹1,74,000"
-//   tip     — optional longer breakdown, shown on hover/focus
-//
-// One measure, one colour. Bars are never coloured by their own
-// value — the length already says that, and spending colour on it
-// as well would leave nothing to say anything else with.
-
-function chartBars(target, rows, opts) {
-  const node = typeof target === "string" ? el(target) : target;
-  if (!node) return;
-
-  const o = opts || {};
-  const max = rows.reduce(function (m, r) { return Math.max(m, r.value || 0); }, 0);
-
-  if (rows.length === 0 || max <= 0) {
-    node.innerHTML = '<p class="chart-empty">' +
-      esc(o.empty || "Nothing to show yet.") + "</p>";
-    return;
-  }
-
-  node.innerHTML = rows.map(function (r) {
-    const value = r.value || 0;
-    const pct = Math.max((value / max) * 100, BAR_MIN_PCT);
-    const tip = r.tip || (r.label + " — " + (r.display || value));
-
-    return '<div class="chart-row" tabindex="0" data-tip="' + esc(tip) + '">' +
-      '<span class="chart-label">' + esc(r.label) +
-        (r.sub ? '<span class="chart-sub">' + esc(r.sub) + "</span>" : "") +
-      "</span>" +
-      '<span class="chart-track">' +
-        '<span class="chart-bar' + (value > 0 ? "" : " is-zero") +
-          '" style="width:' + pct.toFixed(2) + '%"></span>' +
-      "</span>" +
-      '<span class="chart-value num">' + esc(r.display || String(value)) + "</span>" +
-    "</div>";
-  }).join("");
-}
 
 // ---------- meters: how much of the limit is used ----------
 //

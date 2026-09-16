@@ -102,14 +102,33 @@ function creditCheck(order) {
 }
 
 // ============================================================
-// SALES — three numbers and one picture
+// SHOWING ONE VIEW
+// A tab has a meter and a table; exactly one of them is on screen
+// at a time, whichever the dropdown asks for.
+// ============================================================
+
+function showMeter(tab) {
+  el(tab + "ChartWrap").hidden = false;
+  el(tab + "TableWrap").hidden = true;
+}
+
+function showTable(tab, columns, rowsHtml) {
+  el(tab + "ChartWrap").hidden = true;
+  el(tab + "TableWrap").hidden = false;
+  el(tab + "Head").innerHTML = columns.map(function (c) {
+    return "<th>" + c + "</th>";
+  }).join("");
+  el(tab + "Body").innerHTML = rowsHtml;
+}
+
+// ============================================================
+// SALES — three numbers, then one view
 // ============================================================
 
 const SALES_NOTES = {
-  stage: "How far along every order is. Longest bar = most money sitting there.",
-  salesman: "Who has brought in the most business.",
-  dealer: "Which shops are ordering the most.",
-  credit: "A full bar means the dealer has used up their whole credit limit."
+  credit: "A full bar means the dealer has used up their whole credit limit.",
+  dealer: "",
+  salesman: ""
 };
 
 function renderSales() {
@@ -132,35 +151,14 @@ function renderSales() {
     (late.length === 1 ? " bill" : " bills") + " over 30 days late";
   el("kpiOutstandingNote").classList.toggle("warn", late.length > 0);
 
-  el("salesNote").textContent = SALES_NOTES[view.sales] || "";
+  // the caption only earns its place next to a meter
+  const salesNote = SALES_NOTES[view.sales] || "";
+  el("salesNote").textContent = salesNote;
+  el("salesNote").hidden = salesNote === "";
 
-  if (view.sales === "credit") return drawCredit();
   if (view.sales === "salesman") return drawBySalesman(live);
   if (view.sales === "dealer") return drawByDealer(live);
-  return drawByStage();
-}
-
-// Labels come from the status list in data.js rather than being written out
-// again here, so a stage can never be called one thing on the chart and
-// another on the order card.
-const PIPELINE = PIPELINE_KEYS.map(function (key) {
-  return { key: key, label: getStatus(key).label };
-});
-
-function drawByStage() {
-  chartBars("salesChart", PIPELINE.map(function (s) {
-    const list = atStage(s.key);
-    const value = sumValue(list);
-    return {
-      label: s.label,
-      sub: list.length + (list.length === 1 ? " order" : " orders"),
-      value: value,
-      display: rupees(value),
-      tip: s.label + " — " + list.length +
-        (list.length === 1 ? " order worth " : " orders worth ") + rupees(value) +
-        (list.length ? " · " + list.map(function (o) { return o.no; }).join(", ") : "")
-    };
-  }), { empty: "No orders yet." });
+  return drawCredit();
 }
 
 function drawBySalesman(live) {
@@ -173,21 +171,22 @@ function drawBySalesman(live) {
     r.value += orderTotals(o).value;
   });
 
-  chartBars("salesChart", Object.keys(by).map(function (n) {
+  const rows = Object.keys(by).sort(function (a, b) {
+    return by[b].value - by[a].value;
+  }).map(function (n) {
     const r = by[n];
     const staff = STAFF.find(function (s) { return s.name === n; });
-    return {
-      label: n,
-      sub: (staff ? staff.branch + " · " : "") + r.orders +
-        (r.orders === 1 ? " order" : " orders"),
-      value: r.value,
-      display: rupees(r.value),
-      tip: n + " — " + rupees(r.value) + " across " + r.orders +
-        (r.orders === 1 ? " order" : " orders") +
-        (r.waiting > 0 ? ", " + r.waiting + " still waiting on you" : "")
-    };
-  }).sort(function (a, b) { return b.value - a.value; }),
-    { empty: "No orders yet." });
+    return "<tr>" +
+      '<td><span class="t-name">' + esc(n) + "</span>" +
+        '<span class="t-sub">' + esc(staff ? staff.branch : "\u2014") + "</span></td>" +
+      '<td class="t-strong">' + r.orders + "</td>" +
+      '<td class="t-strong' + (r.waiting > 0 ? " warn" : "") + '">' + r.waiting + "</td>" +
+      '<td class="t-strong">' + rupees(r.value) + "</td>" +
+      "</tr>";
+  }).join("");
+
+  showTable("sales", ["Salesman", "Orders", "Waiting on you", "Value"],
+    rows || '<tr><td colspan="4" class="muted">No orders yet.</td></tr>');
 }
 
 function drawByDealer(live) {
@@ -198,23 +197,26 @@ function drawByDealer(live) {
     r.value += orderTotals(o).value;
   });
 
-  chartBars("salesChart", Object.keys(by).map(function (id) {
+  const rows = Object.keys(by).sort(function (a, b) {
+    return by[b].value - by[a].value;
+  }).map(function (id) {
     const c = getCustomer(id);
     const r = by[id];
-    return {
-      label: c ? c.name : id,
-      sub: (c ? c.place + " · " : "") + r.orders +
-        (r.orders === 1 ? " order" : " orders"),
-      value: r.value,
-      display: rupees(r.value),
-      tip: (c ? c.name : id) + " — " + rupees(r.value) + " ordered" +
-        (c ? ", " + rupees(c.outstanding) + " still unpaid" : "")
-    };
-  }).sort(function (a, b) { return b.value - a.value; }),
-    { empty: "No orders yet." });
+    return "<tr>" +
+      '<td><span class="t-name">' + esc(c ? c.name : id) + "</span>" +
+        '<span class="t-sub">' + esc(c ? c.place : "") + "</span></td>" +
+      '<td class="t-strong">' + r.orders + "</td>" +
+      '<td class="t-strong">' + rupees(r.value) + "</td>" +
+      '<td class="t-strong">' + (c ? rupees(c.outstanding) : "\u2014") + "</td>" +
+      "</tr>";
+  }).join("");
+
+  showTable("sales", ["Dealer", "Orders", "Ordered", "Owes us"],
+    rows || '<tr><td colspan="4" class="muted">No orders yet.</td></tr>');
 }
 
 function drawCredit() {
+  showMeter("sales");
   chartMeters("salesChart", CUSTOMERS.slice().sort(function (a, b) {
     return (b.outstanding / b.creditLimit) - (a.outstanding / a.creditLimit);
   }).map(function (c) {
@@ -224,7 +226,8 @@ function drawCredit() {
       label: c.name,
       sub: rupees(c.outstanding) + " of " + rupees(c.creditLimit),
       pct: pct,
-      display: Math.round(pct) + "%",
+      // never a number the bar contradicts: a full bar says "all of it"
+      display: pct >= 100 ? "All of it" : Math.round(pct) + "% used",
       state: st.state,
       stateLabel: st.label,
       tip: c.name + " owes " + rupees(c.outstanding) + " against a " +
@@ -242,9 +245,9 @@ function drawCredit() {
 const OPEN_PO = ["raised", "sent", "partial"];
 
 const PURCHASE_NOTES = {
-  material: "A full bar means we hold as much as the factory wants. Short bars need buying.",
-  orders: "Everything we have ordered from our suppliers.",
-  supplier: "Money committed to each supplier on orders not yet closed."
+  material: "A full bar means we already hold as much as the factory wants. Short bars need buying.",
+  orders: "",
+  supplier: ""
 };
 
 function renderPurchase() {
@@ -261,62 +264,71 @@ function renderPurchase() {
     : short.map(function (m) { return m.name; }).join(", ");
   el("kpiReorderNote").classList.toggle("warn", short.length > 0);
 
-  el("purchaseNote").textContent = PURCHASE_NOTES[view.purchase] || "";
+  // the caption only earns its place next to a meter
+  const purchaseNote = PURCHASE_NOTES[view.purchase] || "";
+  el("purchaseNote").textContent = purchaseNote;
+  el("purchaseNote").hidden = purchaseNote === "";
 
-  // the purchase-order list is the one view that is a table, not a chart
-  const isTable = view.purchase === "orders";
-  el("poTableWrap").hidden = !isTable;
-
-  if (isTable) {
-    el("purchaseChart").innerHTML = "";
-    return drawPoTable();
-  }
+  if (view.purchase === "orders") return drawPoTable();
   if (view.purchase === "supplier") return drawSuppliers();
   return drawMaterials();
 }
 
 function drawMaterials() {
+  showMeter("purchase");
+
   chartMeters("purchaseChart", MATERIALS.slice().sort(function (a, b) {
     return (a.onHand / a.reorder) - (b.onHand / b.reorder);
   }).map(function (m) {
     const pct = (m.onHand / m.reorder) * 100;
     const st = coverState(pct);
+    const short = m.reorder - m.onHand;
+
     return {
       label: m.name,
-      sub: groupIndian(m.onHand) + " of " + groupIndian(m.reorder) + " " + m.unit,
+      sub: "have " + groupIndian(m.onHand) + " \u00B7 want " +
+        groupIndian(m.reorder) + " " + m.unit,
       pct: pct,
-      display: Math.round(pct) + "%",
+      // A bar that is already full must not be labelled 148% \u2014 that reads
+      // as a contradiction. Once the bar is full the only useful thing left
+      // to say is "enough"; below it, say exactly how much is missing.
+      display: pct >= 100 ? "Enough" : "Short " + groupIndian(short),
       state: st.state,
       stateLabel: st.label,
-      tip: m.name + " — we hold " + groupIndian(m.onHand) + " " + m.unit +
-        " and want " + groupIndian(m.reorder) + "." +
-        (pct < 100 ? " Short by " + groupIndian(m.reorder - m.onHand) + " " + m.unit + "." : "")
+      tip: m.name + " \u2014 we hold " + groupIndian(m.onHand) + " " + m.unit +
+        " and want to keep " + groupIndian(m.reorder) + "." +
+        (short > 0
+          ? " Need to buy " + groupIndian(short) + " " + m.unit + "."
+          : " Nothing to buy.")
     };
   }));
 }
 
 function drawSuppliers() {
-  chartBars("purchaseChart", SUPPLIERS.map(function (s) {
+  const rows = SUPPLIERS.map(function (s) {
     const theirs = PURCHASES.filter(function (p) {
       return p.supplierId === s.id && OPEN_PO.indexOf(p.status) !== -1;
     });
-    const value = theirs.reduce(function (a, p) { return a + p.value; }, 0);
     return {
-      label: s.name,
-      sub: s.supplies,
-      value: value,
-      display: value > 0 ? rupees(value) : "—",
-      tip: s.name + " of " + s.place + " — " + (theirs.length
-        ? rupees(value) + " on " + theirs.length +
-          (theirs.length === 1 ? " open order" : " open orders")
-        : "nothing open right now") + "."
+      s: s,
+      open: theirs.length,
+      value: theirs.reduce(function (a, p) { return a + p.value; }, 0)
     };
-  }).sort(function (a, b) { return b.value - a.value; }),
-    { empty: "No open purchase orders." });
+  }).sort(function (a, b) { return b.value - a.value; }).map(function (r) {
+    return "<tr>" +
+      '<td><span class="t-name">' + esc(r.s.name) + "</span>" +
+        '<span class="t-sub">' + esc(r.s.place) + "</span></td>" +
+      '<td class="muted">' + esc(r.s.supplies) + "</td>" +
+      '<td class="t-strong">' + r.open + "</td>" +
+      '<td class="t-strong">' + (r.value > 0 ? rupees(r.value) : "\u2014") + "</td>" +
+      "</tr>";
+  }).join("");
+
+  showTable("purchase", ["Supplier", "Supplies", "Open orders", "Money committed"], rows);
 }
 
 function drawPoTable() {
-  el("poBody").innerHTML = PURCHASES.map(function (p) {
+  const rows = PURCHASES.map(function (p) {
     const s = getSupplier(p.supplierId);
     const st = getPurchaseStatus(p.status);
     return "<tr>" +
@@ -328,6 +340,8 @@ function drawPoTable() {
       '<td><span class="ord-status" data-tone="' + st.tone + '">' + st.label + "</span></td>" +
       "</tr>";
   }).join("");
+
+  showTable("purchase", ["Order", "Supplier", "Value", "Status"], rows);
 }
 
 // ============================================================
