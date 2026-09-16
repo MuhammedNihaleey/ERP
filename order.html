@@ -299,7 +299,11 @@
         <p class="chart-note">Where your orders stand right now.</p>
       </figure>
 
-      <nav class="cats" id="ordFilters"></nav>
+      <div class="pickrow">
+        <label class="pickrow-label" for="ordFilter">Show me</label>
+        <select id="ordFilter"></select>
+        <span class="pickrow-count" id="ordFilterCount"></span>
+      </div>
       <div class="ord-list" id="ordList"></div>
       <p class="picker-none" id="ordNone" hidden>No orders with that status.</p>
     </div>

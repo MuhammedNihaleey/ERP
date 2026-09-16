@@ -39,33 +39,27 @@
 
 <main>
 
-  <!-- ================= SALES ================= -->
+  <!-- ================= SALES =================
+       Three numbers, then one picture at a time. The dropdown swaps
+       what the chart shows rather than stacking every view down the
+       page, which is what made this screen hard to take in.
+  -->
   <section class="panel" id="panel-sales">
 
     <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Sales at a glance</h2>
-        <span class="hint" id="salesAsOf"></span>
-      </div>
-
-      <div class="figures figures-4">
+      <div class="figures">
         <div class="figure">
           <span class="label">Order book</span>
           <div class="figure-value num" id="kpiBookValue">—</div>
           <div class="figure-note" id="kpiBookNote"></div>
         </div>
         <div class="figure">
-          <span class="label">Awaiting approval</span>
+          <span class="label">Waiting for you</span>
           <div class="figure-value num" id="kpiPending">—</div>
           <div class="figure-note" id="kpiPendingNote"></div>
         </div>
         <div class="figure">
-          <span class="label">In the factory</span>
-          <div class="figure-value num" id="kpiFactory">—</div>
-          <div class="figure-note" id="kpiFactoryNote"></div>
-        </div>
-        <div class="figure">
-          <span class="label">Outstanding</span>
+          <span class="label">Money owed to us</span>
           <div class="figure-value num" id="kpiOutstanding">—</div>
           <div class="figure-note" id="kpiOutstandingNote"></div>
         </div>
@@ -73,89 +67,19 @@
     </div>
 
     <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Order book by stage</h2>
-        <span class="hint">Every order in the system</span>
+      <div class="pickrow">
+        <label class="pickrow-label" for="salesView">Show me</label>
+        <select id="salesView">
+          <option value="stage">Orders by stage</option>
+          <option value="salesman">Orders by salesman</option>
+          <option value="dealer">Orders by dealer</option>
+          <option value="credit">Credit used by each dealer</option>
+        </select>
       </div>
+
       <figure class="chart">
-        <div class="chart-rows" id="chartStage"></div>
-        <p class="chart-note">
-          Bar length is the value of the orders sitting at that stage.
-          Rejected orders are left out — they are in the table below.
-        </p>
-      </figure>
-
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Stage</th>
-              <th>Orders</th>
-              <th>Boxes</th>
-              <th>Pairs</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-          <tbody id="stageBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">By salesman</h2>
-        <span class="hint">Live order book, rejected orders excluded</span>
-      </div>
-      <figure class="chart">
-        <div class="chart-rows" id="chartSalesman"></div>
-      </figure>
-
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Salesman</th>
-              <th>Orders</th>
-              <th>Pending</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-          <tbody id="salesmanBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Top dealers</h2>
-        <span class="hint">By value on the order book</span>
-      </div>
-      <figure class="chart">
-        <div class="chart-rows" id="chartDealer"></div>
-      </figure>
-
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Dealer</th>
-              <th>Orders</th>
-              <th>Value</th>
-              <th>Outstanding</th>
-            </tr>
-          </thead>
-          <tbody id="dealerBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">How much credit each dealer has used</h2>
-        <span class="hint">A full bar means the dealer is at their limit</span>
-      </div>
-      <figure class="chart">
-        <div class="chart-rows" id="chartCredit"></div>
+        <div class="chart-rows" id="salesChart"></div>
+        <p class="chart-note" id="salesNote"></p>
       </figure>
     </div>
 
@@ -165,24 +89,19 @@
   <section class="panel" id="panel-purchase" hidden>
 
     <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Purchase at a glance</h2>
-        <span class="hint">Raw material bought in for the factory</span>
-      </div>
-
       <div class="figures">
         <div class="figure">
-          <span class="label">Open POs</span>
+          <span class="label">Open orders</span>
           <div class="figure-value num" id="kpiOpenPo">—</div>
           <div class="figure-note" id="kpiOpenPoNote"></div>
         </div>
         <div class="figure">
-          <span class="label">Committed spend</span>
+          <span class="label">Money committed</span>
           <div class="figure-value num" id="kpiPoValue">—</div>
-          <div class="figure-note">On open purchase orders</div>
+          <div class="figure-note">On orders not yet closed</div>
         </div>
         <div class="figure">
-          <span class="label">Below reorder level</span>
+          <span class="label">Need reordering</span>
           <div class="figure-value num" id="kpiReorder">—</div>
           <div class="figure-note" id="kpiReorderNote"></div>
         </div>
@@ -190,23 +109,26 @@
     </div>
 
     <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Purchase orders</h2>
-        <span class="hint" id="poCount"></span>
+      <div class="pickrow">
+        <label class="pickrow-label" for="purchaseView">Show me</label>
+        <select id="purchaseView">
+          <option value="material">What needs buying</option>
+          <option value="orders">Purchase orders</option>
+          <option value="supplier">Spend by supplier</option>
+        </select>
       </div>
+
       <figure class="chart">
-        <div class="chart-rows" id="chartPoStage"></div>
-        <p class="chart-note">Bar length is the value of the purchase orders at that stage.</p>
+        <div class="chart-rows" id="purchaseChart"></div>
+        <p class="chart-note" id="purchaseNote"></p>
       </figure>
 
-      <div class="table-scroll">
+      <div class="table-scroll" id="poTableWrap" hidden>
         <table>
           <thead>
             <tr>
-              <th>PO</th>
+              <th>Order</th>
               <th>Supplier</th>
-              <th>Material</th>
-              <th>Quantity</th>
               <th>Value</th>
               <th>Status</th>
             </tr>
@@ -216,84 +138,26 @@
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Material on hand</h2>
-        <span class="hint">Anything under its reorder level is flagged</span>
-      </div>
-      <figure class="chart">
-        <div class="chart-rows" id="chartMaterial"></div>
-        <p class="chart-note">
-          A full bar means the material is at the level the factory wants held.
-          Anything short of full needs buying in.
-        </p>
-      </figure>
-
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Material</th>
-              <th>On hand</th>
-              <th>Reorder level</th>
-              <th>Cover</th>
-            </tr>
-          </thead>
-          <tbody id="materialBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Suppliers</h2>
-      </div>
-      <figure class="chart">
-        <div class="chart-rows" id="chartSupplier"></div>
-      </figure>
-
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Supplier</th>
-              <th>Supplies</th>
-              <th>Open POs</th>
-              <th>Committed</th>
-            </tr>
-          </thead>
-          <tbody id="supplierBody"></tbody>
-        </table>
-      </div>
-    </div>
-
   </section>
 
-  <!-- ================= ORDER — the approval desk ================= -->
+  <!-- ================= ORDER — the approval desk =================
+       One list, not two. The dropdown starts on the orders that need
+       a decision, and Approve / Reject sit on the card itself so
+       nothing has to be opened first.
+  -->
   <section class="panel" id="panel-orders" hidden>
 
     <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Waiting on the office</h2>
-        <span class="hint" id="queueCount"></span>
+      <div class="pickrow">
+        <label class="pickrow-label" for="orderView">Show me</label>
+        <select id="orderView"></select>
+        <span class="pickrow-count" id="orderCount"></span>
       </div>
 
       <p class="queue-lead" id="queueLead" hidden></p>
-      <div class="ord-list" id="queueList"></div>
-      <p class="picker-none" id="queueNone" hidden>
-        Nothing waiting — every order has been decided.
-      </p>
-    </div>
 
-    <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">All orders</h2>
-        <span class="hint" id="allCount"></span>
-      </div>
-
-      <nav class="cats" id="ordFilters"></nav>
       <div class="ord-list" id="ordList"></div>
-      <p class="picker-none" id="ordNone" hidden>No orders with that status.</p>
+      <p class="picker-none" id="ordNone" hidden>Nothing here.</p>
     </div>
 
   </section>
@@ -302,79 +166,30 @@
   <section class="panel" id="panel-admin" hidden>
 
     <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Users &amp; roles</h2>
-        <span class="hint">Two roles have a screen in this demo</span>
+      <div class="pickrow">
+        <label class="pickrow-label" for="adminView">Show me</label>
+        <select id="adminView">
+          <option value="users">Staff and their logins</option>
+          <option value="dealers">Dealer credit limits</option>
+          <option value="brands">Our brands</option>
+        </select>
       </div>
+
       <div class="table-scroll">
         <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>User ID</th>
-              <th>Role</th>
-              <th>Branch</th>
-              <th>Login</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="staffBody"></tbody>
+          <thead><tr id="adminHead"></tr></thead>
+          <tbody id="adminBody"></tbody>
         </table>
       </div>
     </div>
 
     <div class="section">
       <div class="section-head">
-        <h2 class="section-title">Dealer credit control</h2>
-        <span class="hint">Limits the order screen checks against</span>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Dealer</th>
-              <th>Credit limit</th>
-              <th>Outstanding</th>
-              <th>Headroom</th>
-              <th>Overdue</th>
-            </tr>
-          </thead>
-          <tbody id="creditBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Companies &amp; brands</h2>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Brand</th>
-              <th>Range</th>
-              <th>Articles</th>
-              <th>Pairs in godown</th>
-            </tr>
-          </thead>
-          <tbody id="brandBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-head">
-        <h2 class="section-title">Demo data</h2>
-        <span class="hint">Shared order book, held in this browser</span>
+        <h2 class="section-title">Start the demo again</h2>
       </div>
       <p class="hint" id="demoDataNote"></p>
       <div class="submit-row">
-        <button class="btn-ghost" id="resetDemoBtn">Reset demo orders</button>
-        <span class="hint">
-          Puts the order book back to its five sample orders and clears
-          anything placed during a run-through.
-        </span>
+        <button class="btn-ghost" id="resetDemoBtn">Reset all orders</button>
       </div>
     </div>
 

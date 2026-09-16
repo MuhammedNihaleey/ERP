@@ -1347,28 +1347,32 @@ document.addEventListener("keydown", function (e) {
 // ============================================================
 
 const ORDER_FILTERS = [
-  { key: "all", label: "All" },
-  { key: "pending", label: "Awaiting approval", has: ["pending"] },
-  { key: "making", label: "In production", has: ["approved", "production", "ready"] },
-  { key: "dispatched", label: "Dispatched", has: ["dispatched"] },
+  { key: "all", label: "All my orders" },
+  { key: "pending", label: "Waiting for approval", has: ["pending"] },
+  { key: "making", label: "Approved and being made", has: ["approved", "production", "ready"] },
+  { key: "dispatched", label: "Sent out", has: ["dispatched"] },
   { key: "delivered", label: "Delivered", has: ["delivered"] },
   { key: "rejected", label: "Rejected", has: ["rejected"] }
 ];
 
-function initPending() {
-  el("ordFilters").innerHTML = ORDER_FILTERS.map(function (f) {
-    return '<button type="button" class="cat' +
-      (f.key === state.ordFilter ? " is-active" : "") +
-      '" data-filter="' + f.key + '">' + f.label + "</button>";
+// the dropdown carries its own counts, so it says where things stand
+// before it is even opened
+function renderOrdFilter() {
+  const sel = el("ordFilter");
+  sel.innerHTML = ORDER_FILTERS.map(function (f) {
+    const n = f.has
+      ? myOrders().filter(function (o) { return f.has.indexOf(o.status) !== -1; }).length
+      : myOrders().length;
+    return '<option value="' + f.key + '">' + esc(f.label) + " (" + n + ")</option>";
   }).join("");
+  sel.value = state.ordFilter;
+}
 
-  el("ordFilters").addEventListener("click", function (e) {
-    const btn = e.target.closest("[data-filter]");
-    if (!btn) return;
-    state.ordFilter = btn.dataset.filter;
-    document.querySelectorAll("#ordFilters .cat").forEach(function (c) {
-      c.classList.toggle("is-active", c.dataset.filter === state.ordFilter);
-    });
+function initPending() {
+  renderOrdFilter();
+
+  el("ordFilter").addEventListener("change", function () {
+    state.ordFilter = el("ordFilter").value;
     renderPendingTab();
   });
 
@@ -1455,14 +1459,9 @@ function toast(msg) {
 // The stages an order travels through, in order. Rejected is a dead end
 // rather than a stage, so it is only shown when the salesman actually has
 // one — an empty "Rejected" bar on every visit reads like a warning.
-const MY_STAGES = [
-  { key: "pending", label: "Waiting on the office" },
-  { key: "approved", label: "Approved" },
-  { key: "production", label: "In production" },
-  { key: "ready", label: "Ready to dispatch" },
-  { key: "dispatched", label: "Dispatched" },
-  { key: "delivered", label: "Delivered" }
-];
+const MY_STAGES = PIPELINE_KEYS.map(function (key) {
+  return { key: key, label: getStatus(key).label };
+});
 
 function renderMyStageChart(list) {
   const stages = MY_STAGES.slice();
@@ -1487,6 +1486,8 @@ function renderMyStageChart(list) {
 }
 
 function renderPendingTab() {
+  renderOrdFilter();
+
   const list = filteredOrders();
   const mine = myOrders();
   const awaiting = mine.filter(function (o) {
@@ -1495,6 +1496,9 @@ function renderPendingTab() {
 
   el("pendingCount").textContent =
     awaiting + (awaiting === 1 ? " order open" : " orders open");
+
+  el("ordFilterCount").textContent = list.length +
+    (list.length === 1 ? " order" : " orders");
 
   renderDecisionLead(mine);
   renderPendingBadge();

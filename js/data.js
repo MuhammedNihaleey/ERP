@@ -250,39 +250,48 @@ let nextOrderNumber = 2451;
 // those screens are wired up these are dummy values.
 // ============================================================
 
+// Plain words. These labels are the single source for the status pill, the
+// dropdowns and the charts, so the same order is never called two things on
+// two different screens.
 const ORDER_STATUSES = {
-  pending:    { label: "Pending approval",  tone: "wait" },
-  approved:   { label: "Approved",          tone: "info" },
-  production: { label: "In production",     tone: "info" },
-  ready:      { label: "Ready to dispatch", tone: "info" },
-  dispatched: { label: "Dispatched",        tone: "go" },
-  delivered:  { label: "Delivered",         tone: "done" },
-  rejected:   { label: "Rejected",          tone: "stop" }
+  pending:    { label: "Waiting for approval", tone: "wait" },
+  approved:   { label: "Approved",             tone: "info" },
+  production: { label: "Being made",           tone: "info" },
+  ready:      { label: "Ready to send",        tone: "info" },
+  dispatched: { label: "Sent out",             tone: "go" },
+  delivered:  { label: "Delivered",            tone: "done" },
+  rejected:   { label: "Rejected",             tone: "stop" }
 };
+
+// the order a job really travels in; rejected is a dead end, not a stage
+const PIPELINE_KEYS = ["pending", "approved", "production", "ready",
+                       "dispatched", "delivered"];
 
 // What the office may do to an order in a given state. Each action
 // names the status it moves the order to; the office screen turns
 // these into the buttons on an order card.
+// Plain words, and never more than two choices at a time — the office
+// should not have to work out what a button means.
 const OFFICE_ACTIONS = {
   pending: [
-    { key: "approve", label: "Approve",              to: "approved",   kind: "primary" },
-    { key: "reject",  label: "Reject",               to: "rejected",   kind: "danger"  }
+    { key: "approve",  label: "Approve",           to: "approved",   kind: "ok"      },
+    { key: "reject",   label: "Reject",            to: "rejected",   kind: "danger"  }
   ],
   approved: [
-    { key: "produce", label: "Send to production",   to: "production", kind: "primary" },
-    { key: "hold",    label: "Move back to pending", to: "pending",    kind: "ghost"   }
+    { key: "produce",  label: "Send to factory",   to: "production", kind: "primary" },
+    { key: "hold",     label: "Undo approval",     to: "pending",    kind: "ghost"   }
   ],
   production: [
-    { key: "ready",   label: "Mark ready to dispatch", to: "ready",    kind: "primary" }
+    { key: "ready",    label: "Mark as made",      to: "ready",      kind: "primary" }
   ],
   ready: [
-    { key: "dispatch", label: "Mark dispatched",     to: "dispatched", kind: "primary" }
+    { key: "dispatch", label: "Mark as sent out",  to: "dispatched", kind: "primary" }
   ],
   dispatched: [
-    { key: "deliver", label: "Mark delivered",       to: "delivered",  kind: "primary" }
+    { key: "deliver",  label: "Mark as delivered", to: "delivered",  kind: "primary" }
   ],
   rejected: [
-    { key: "reopen",  label: "Reopen for approval",  to: "pending",    kind: "ghost"   }
+    { key: "reopen",   label: "Undo reject",       to: "pending",    kind: "ghost"   }
   ],
   delivered: []
 };
@@ -316,7 +325,7 @@ const ORDERS = [
     customerId: "c1",
     date: "2026-08-24",
     status: "production",
-    note: "Expected off the line 29 Aug",
+    note: "Should be off the line on 29 Aug",
     lines: [
       { code: "GTS-4610", colour: "Brown", ratio: PRESETS.standard, boxes: 10 },
       { code: "GTS-4820", colour: "Black", ratio: PRESETS.small,    boxes: 4 },
@@ -329,7 +338,7 @@ const ORDERS = [
     customerId: "c5",
     date: "2026-08-22",
     status: "approved",
-    note: "Approved by office, waiting on production slot",
+    note: "Approved by office, waiting for a slot in the factory",
     lines: [
       { code: "LDS-2415", colour: "Black", ratio: PRESETS.large, boxes: 5 }
     ]

@@ -2,26 +2,28 @@
 // SAMPLE FOOTWEAR ERP — office screen
 //
 // The other half of the loop. A salesman places an order on
-// order.html; it lands here in "Waiting on the office", where it is
-// approved, rejected, or pushed along the factory pipeline. Every
-// decision is written to the shared order book, so the salesman's
-// dashboard reflects it — live if their tab is open.
+// order.html; it lands here for a decision, and whatever the
+// office decides goes straight back to the salesman's dashboard.
+//
+// Every tab is built the same way so there is only one thing to
+// learn: a few plain numbers at the top, a "Show me" dropdown,
+// and one view underneath it. Nothing is stacked down the page.
 // ============================================================
 
 // nobody but the office gets this page
 const me = Session.require("office");
 
+// which view each dropdown is on
+const view = { sales: "stage", purchase: "material", order: "pending", admin: "users" };
+
 // ============================================================
-// TOP BAR + TABS
+// SHELL
 // ============================================================
 
 function renderWho() {
   el("whoami").textContent = "Office · " + me.name;
   el("todayDate").textContent = new Date().toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric"
+    weekday: "short", day: "numeric", month: "short", year: "numeric"
   });
 }
 
@@ -35,22 +37,28 @@ function showTab(name) {
   window.scrollTo(0, 0);
 }
 
-function initTabs() {
+function initShell() {
   el("tabs").addEventListener("click", function (e) {
     const btn = e.target.closest(".tab");
-    if (!btn) return;
-    showTab(btn.dataset.tab);
+    if (btn) showTab(btn.dataset.tab);
   });
 
   el("signOutBtn").addEventListener("click", function () {
     Session.signOut();
     window.location.href = "index.html";
   });
-}
 
-// ============================================================
-// TOAST — a change that arrived from the salesman's tab
-// ============================================================
+  // every dropdown works the same way: pick a view, redraw that view
+  [["salesView", "sales", renderSales],
+   ["purchaseView", "purchase", renderPurchase],
+   ["orderView", "order", renderOrders],
+   ["adminView", "admin", renderAdmin]].forEach(function (p) {
+    el(p[0]).addEventListener("change", function () {
+      view[p[1]] = el(p[0]).value;
+      p[2]();
+    });
+  });
+}
 
 let toastTimer = null;
 
@@ -64,28 +72,20 @@ function toast(msg) {
 }
 
 // ============================================================
-// ORDER — the approval desk
+// SHARED SUMS
 // ============================================================
 
-const OFFICE_FILTERS = [
-  { key: "all", label: "All" },
-  { key: "pending", label: "Awaiting approval", has: ["pending"] },
-  { key: "making", label: "In the factory", has: ["approved", "production", "ready"] },
-  { key: "dispatched", label: "Dispatched", has: ["dispatched"] },
-  { key: "delivered", label: "Delivered", has: ["delivered"] },
-  { key: "rejected", label: "Rejected", has: ["rejected"] }
-];
-
-let ordFilter = "all";
-
-function pendingOrders() {
-  return ORDERS.filter(function (o) { return o.status === "pending"; });
+function atStage(key) {
+  return ORDERS.filter(function (o) { return o.status === key; });
 }
 
-function filteredOrders() {
-  const f = OFFICE_FILTERS.find(function (x) { return x.key === ordFilter; });
-  if (!f || !f.has) return ORDERS;
-  return ORDERS.filter(function (o) { return f.has.indexOf(o.status) !== -1; });
+function sumValue(list) {
+  return list.reduce(function (a, o) { return a + orderTotals(o).value; }, 0);
+}
+
+// everything except the orders that were turned down
+function liveOrders() {
+  return ORDERS.filter(function (o) { return o.status !== "rejected"; });
 }
 
 // Does this order put the dealer past their credit limit? The office needs
@@ -93,106 +93,330 @@ function filteredOrders() {
 function creditCheck(order) {
   const c = getCustomer(order.customerId);
   if (!c) return null;
-
   const value = orderTotals(order).value;
   const headroom = c.creditLimit - c.outstanding - value;
   return {
-    customer: c,
-    value: value,
-    headroom: headroom,
-    over: headroom < 0,
-    overdue: c.overdueDays
+    customer: c, value: value, headroom: headroom,
+    over: headroom < 0, overdue: c.overdueDays
   };
 }
 
-function actionsMarkup(order) {
-  const acts = officeActions(order.status);
-  if (acts.length === 0) {
-    return '<p class="ord-actions-none">This order is closed — nothing left to do.</p>';
+// ============================================================
+// SALES — three numbers and one picture
+// ============================================================
+
+const SALES_NOTES = {
+  stage: "How far along every order is. Longest bar = most money sitting there.",
+  salesman: "Who has brought in the most business.",
+  dealer: "Which shops are ordering the most.",
+  credit: "A full bar means the dealer has used up their whole credit limit."
+};
+
+function renderSales() {
+  const live = liveOrders();
+  const waiting = atStage("pending");
+  const owed = CUSTOMERS.reduce(function (a, c) { return a + c.outstanding; }, 0);
+  const late = PAYMENTS.filter(function (p) { return p.overdueDays > 30; });
+
+  el("kpiBookValue").textContent = rupees(sumValue(live));
+  el("kpiBookNote").textContent = live.length +
+    (live.length === 1 ? " order" : " orders") + " on the books";
+
+  el("kpiPending").textContent = waiting.length;
+  el("kpiPendingNote").textContent = waiting.length === 0
+    ? "Nothing to decide"
+    : rupees(sumValue(waiting)) + " to approve";
+
+  el("kpiOutstanding").textContent = rupees(owed);
+  el("kpiOutstandingNote").textContent = late.length +
+    (late.length === 1 ? " bill" : " bills") + " over 30 days late";
+  el("kpiOutstandingNote").classList.toggle("warn", late.length > 0);
+
+  el("salesNote").textContent = SALES_NOTES[view.sales] || "";
+
+  if (view.sales === "credit") return drawCredit();
+  if (view.sales === "salesman") return drawBySalesman(live);
+  if (view.sales === "dealer") return drawByDealer(live);
+  return drawByStage();
+}
+
+// Labels come from the status list in data.js rather than being written out
+// again here, so a stage can never be called one thing on the chart and
+// another on the order card.
+const PIPELINE = PIPELINE_KEYS.map(function (key) {
+  return { key: key, label: getStatus(key).label };
+});
+
+function drawByStage() {
+  chartBars("salesChart", PIPELINE.map(function (s) {
+    const list = atStage(s.key);
+    const value = sumValue(list);
+    return {
+      label: s.label,
+      sub: list.length + (list.length === 1 ? " order" : " orders"),
+      value: value,
+      display: rupees(value),
+      tip: s.label + " — " + list.length +
+        (list.length === 1 ? " order worth " : " orders worth ") + rupees(value) +
+        (list.length ? " · " + list.map(function (o) { return o.no; }).join(", ") : "")
+    };
+  }), { empty: "No orders yet." });
+}
+
+function drawBySalesman(live) {
+  const by = Object.create(null);
+  live.forEach(function (o) {
+    const k = o.by || "Not recorded";
+    const r = by[k] || (by[k] = { orders: 0, waiting: 0, value: 0 });
+    r.orders++;
+    if (o.status === "pending") r.waiting++;
+    r.value += orderTotals(o).value;
+  });
+
+  chartBars("salesChart", Object.keys(by).map(function (n) {
+    const r = by[n];
+    const staff = STAFF.find(function (s) { return s.name === n; });
+    return {
+      label: n,
+      sub: (staff ? staff.branch + " · " : "") + r.orders +
+        (r.orders === 1 ? " order" : " orders"),
+      value: r.value,
+      display: rupees(r.value),
+      tip: n + " — " + rupees(r.value) + " across " + r.orders +
+        (r.orders === 1 ? " order" : " orders") +
+        (r.waiting > 0 ? ", " + r.waiting + " still waiting on you" : "")
+    };
+  }).sort(function (a, b) { return b.value - a.value; }),
+    { empty: "No orders yet." });
+}
+
+function drawByDealer(live) {
+  const by = Object.create(null);
+  live.forEach(function (o) {
+    const r = by[o.customerId] || (by[o.customerId] = { orders: 0, value: 0 });
+    r.orders++;
+    r.value += orderTotals(o).value;
+  });
+
+  chartBars("salesChart", Object.keys(by).map(function (id) {
+    const c = getCustomer(id);
+    const r = by[id];
+    return {
+      label: c ? c.name : id,
+      sub: (c ? c.place + " · " : "") + r.orders +
+        (r.orders === 1 ? " order" : " orders"),
+      value: r.value,
+      display: rupees(r.value),
+      tip: (c ? c.name : id) + " — " + rupees(r.value) + " ordered" +
+        (c ? ", " + rupees(c.outstanding) + " still unpaid" : "")
+    };
+  }).sort(function (a, b) { return b.value - a.value; }),
+    { empty: "No orders yet." });
+}
+
+function drawCredit() {
+  chartMeters("salesChart", CUSTOMERS.slice().sort(function (a, b) {
+    return (b.outstanding / b.creditLimit) - (a.outstanding / a.creditLimit);
+  }).map(function (c) {
+    const pct = (c.outstanding / c.creditLimit) * 100;
+    const st = creditState(pct);
+    return {
+      label: c.name,
+      sub: rupees(c.outstanding) + " of " + rupees(c.creditLimit),
+      pct: pct,
+      display: Math.round(pct) + "%",
+      state: st.state,
+      stateLabel: st.label,
+      tip: c.name + " owes " + rupees(c.outstanding) + " against a " +
+        rupees(c.creditLimit) + " limit. " +
+        rupees(c.creditLimit - c.outstanding) + " left to spend" +
+        (c.overdueDays > 0 ? ", " + c.overdueDays + " days late" : "") + "."
+    };
+  }));
+}
+
+// ============================================================
+// PURCHASE — three numbers and one picture
+// ============================================================
+
+const OPEN_PO = ["raised", "sent", "partial"];
+
+const PURCHASE_NOTES = {
+  material: "A full bar means we hold as much as the factory wants. Short bars need buying.",
+  orders: "Everything we have ordered from our suppliers.",
+  supplier: "Money committed to each supplier on orders not yet closed."
+};
+
+function renderPurchase() {
+  const open = PURCHASES.filter(function (p) { return OPEN_PO.indexOf(p.status) !== -1; });
+  const committed = open.reduce(function (a, p) { return a + p.value; }, 0);
+  const short = MATERIALS.filter(function (m) { return m.onHand < m.reorder; });
+
+  el("kpiOpenPo").textContent = open.length;
+  el("kpiOpenPoNote").textContent = PURCHASES.length + " raised in all";
+  el("kpiPoValue").textContent = rupees(committed);
+  el("kpiReorder").textContent = short.length;
+  el("kpiReorderNote").textContent = short.length === 0
+    ? "Everything is stocked"
+    : short.map(function (m) { return m.name; }).join(", ");
+  el("kpiReorderNote").classList.toggle("warn", short.length > 0);
+
+  el("purchaseNote").textContent = PURCHASE_NOTES[view.purchase] || "";
+
+  // the purchase-order list is the one view that is a table, not a chart
+  const isTable = view.purchase === "orders";
+  el("poTableWrap").hidden = !isTable;
+
+  if (isTable) {
+    el("purchaseChart").innerHTML = "";
+    return drawPoTable();
+  }
+  if (view.purchase === "supplier") return drawSuppliers();
+  return drawMaterials();
+}
+
+function drawMaterials() {
+  chartMeters("purchaseChart", MATERIALS.slice().sort(function (a, b) {
+    return (a.onHand / a.reorder) - (b.onHand / b.reorder);
+  }).map(function (m) {
+    const pct = (m.onHand / m.reorder) * 100;
+    const st = coverState(pct);
+    return {
+      label: m.name,
+      sub: groupIndian(m.onHand) + " of " + groupIndian(m.reorder) + " " + m.unit,
+      pct: pct,
+      display: Math.round(pct) + "%",
+      state: st.state,
+      stateLabel: st.label,
+      tip: m.name + " — we hold " + groupIndian(m.onHand) + " " + m.unit +
+        " and want " + groupIndian(m.reorder) + "." +
+        (pct < 100 ? " Short by " + groupIndian(m.reorder - m.onHand) + " " + m.unit + "." : "")
+    };
+  }));
+}
+
+function drawSuppliers() {
+  chartBars("purchaseChart", SUPPLIERS.map(function (s) {
+    const theirs = PURCHASES.filter(function (p) {
+      return p.supplierId === s.id && OPEN_PO.indexOf(p.status) !== -1;
+    });
+    const value = theirs.reduce(function (a, p) { return a + p.value; }, 0);
+    return {
+      label: s.name,
+      sub: s.supplies,
+      value: value,
+      display: value > 0 ? rupees(value) : "—",
+      tip: s.name + " of " + s.place + " — " + (theirs.length
+        ? rupees(value) + " on " + theirs.length +
+          (theirs.length === 1 ? " open order" : " open orders")
+        : "nothing open right now") + "."
+    };
+  }).sort(function (a, b) { return b.value - a.value; }),
+    { empty: "No open purchase orders." });
+}
+
+function drawPoTable() {
+  el("poBody").innerHTML = PURCHASES.map(function (p) {
+    const s = getSupplier(p.supplierId);
+    const st = getPurchaseStatus(p.status);
+    return "<tr>" +
+      '<td><span class="t-name">' + p.no + "</span>" +
+        '<span class="t-sub">' + esc(p.item) + "</span></td>" +
+      '<td><span class="t-name">' + esc(s ? s.name : "—") + "</span>" +
+        '<span class="t-sub">' + esc(p.qty) + "</span></td>" +
+      '<td class="t-strong">' + rupees(p.value) + "</td>" +
+      '<td><span class="ord-status" data-tone="' + st.tone + '">' + st.label + "</span></td>" +
+      "</tr>";
+  }).join("");
+}
+
+// ============================================================
+// ORDER — the approval desk
+// One list. The dropdown starts on what needs deciding.
+// ============================================================
+
+const ORDER_VIEWS = [
+  { key: "pending", label: getStatus("pending").label, has: ["pending"] },
+  { key: "approved", label: getStatus("approved").label, has: ["approved"] },
+  { key: "making", label: "Being made", has: ["production", "ready"] },
+  { key: "dispatched", label: getStatus("dispatched").label, has: ["dispatched"] },
+  { key: "delivered", label: getStatus("delivered").label, has: ["delivered"] },
+  { key: "rejected", label: getStatus("rejected").label, has: ["rejected"] },
+  { key: "all", label: "All orders" }
+];
+
+function ordersIn(key) {
+  const v = ORDER_VIEWS.find(function (x) { return x.key === key; });
+  if (!v || !v.has) return ORDERS;
+  return ORDERS.filter(function (o) { return v.has.indexOf(o.status) !== -1; });
+}
+
+// the option list carries its own counts, so the dropdown itself says
+// where the work is without opening anything
+function renderOrderPicker() {
+  const sel = el("orderView");
+  sel.innerHTML = ORDER_VIEWS.map(function (v) {
+    return '<option value="' + v.key + '">' + esc(v.label) +
+      " (" + ordersIn(v.key).length + ")</option>";
+  }).join("");
+  sel.value = view.order;
+}
+
+function renderOrders() {
+  renderOrderPicker();
+
+  const list = ordersIn(view.order);
+  const waiting = atStage("pending");
+
+  el("orderCount").textContent = list.length +
+    (list.length === 1 ? " order" : " orders");
+
+  // one line, only when there is actually a credit call to make
+  const risky = waiting.filter(function (o) {
+    const ck = creditCheck(o);
+    return ck && (ck.over || ck.overdue > 30);
+  });
+  const lead = el("queueLead");
+  lead.hidden = risky.length === 0 || view.order !== "pending";
+  if (!lead.hidden) {
+    lead.textContent = risky.length === 1
+      ? "1 order below is from a dealer who already owes too much — check before approving."
+      : risky.length + " orders below are from dealers who already owe too much — check before approving.";
   }
 
-  const buttons = acts.map(function (a) {
-    const cls = a.kind === "primary" ? "btn"
-      : a.kind === "danger" ? "btn btn-danger"
-      : "btn-ghost";
-    return '<button type="button" class="' + cls + '" data-act="' + a.key +
-      '" data-no="' + order.no + '">' + esc(a.label) + "</button>";
-  }).join("");
+  el("ordNone").hidden = list.length > 0;
+  el("ordList").innerHTML = list.map(orderCard).join("");
 
-  // The reason field is revealed by Reject, so a rejection always carries
-  // something back to the salesman. A pending order is drawn twice — once in
-  // the queue, once under All orders — so nothing in here may carry an id;
-  // it is found relative to the card that was clicked instead.
-  return '<div class="ord-actions">' + buttons + "</div>" +
-    '<div class="ord-reason" hidden>' +
-      '<span class="label">Reason — the salesman sees this</span>' +
-      '<div class="ord-reason-row">' +
-        '<input type="text" class="ord-reason-input" autocomplete="off" ' +
-          'aria-label="Reason for rejecting ' + order.no + '" ' +
-          'placeholder="Dealer is over credit limit">' +
-        '<button type="button" class="btn btn-danger" data-confirm-reject="' + order.no +
-          '">Confirm reject</button>' +
-        '<button type="button" class="btn-ghost" data-cancel-reject="' + order.no +
-          '">Cancel</button>' +
-      "</div>" +
-    "</div>";
+  const badge = el("ordersBadge");
+  badge.textContent = waiting.length;
+  badge.hidden = waiting.length === 0;
 }
 
-function historyMarkup(order) {
-  const h = order.history || [];
-  if (h.length === 0) return "";
+const TICK = '<svg class="btn-icon" viewBox="0 0 14 14" aria-hidden="true">' +
+  '<path d="M2.5 7.4 5.6 10.5 11.5 3.9" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  const rows = h.slice().reverse().map(function (entry) {
-    const st = getStatus(entry.status);
-    const when = new Date(entry.at);
-    const stamp = isNaN(when) ? "" :
-      when.toLocaleString("en-IN", {
-        day: "numeric", month: "short", hour: "numeric", minute: "2-digit"
-      });
-    return '<li><span class="trail-what">' + esc(st.label) + "</span>" +
-      '<span class="trail-who">' + esc(entry.by) + "</span>" +
-      '<span class="trail-when">' + esc(stamp) + "</span></li>";
-  }).join("");
+const CROSS = '<svg class="btn-icon" viewBox="0 0 14 14" aria-hidden="true">' +
+  '<path d="M3.5 3.5l7 7M10.5 3.5l-7 7" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round"/></svg>';
 
-  return '<div class="trail"><span class="label">Trail</span><ul>' + rows + "</ul></div>";
-}
-
-function creditMarkup(order) {
-  const ck = creditCheck(order);
-  if (!ck) return "";
-
-  return '<div class="ord-credit' + (ck.over ? " is-over" : "") + '">' +
-    '<span><span class="label">Credit limit</span>' +
-      '<span class="num">' + rupees(ck.customer.creditLimit) + "</span></span>" +
-    '<span><span class="label">Outstanding</span>' +
-      '<span class="num">' + rupees(ck.customer.outstanding) + "</span></span>" +
-    '<span><span class="label">This order</span>' +
-      '<span class="num">' + rupees(ck.value) + "</span></span>" +
-    '<span><span class="label">Headroom</span>' +
-      '<span class="num' + (ck.over ? " warn" : "") + '">' +
-      (ck.over ? "−" + groupIndian(Math.abs(ck.headroom)) : rupees(ck.headroom)) +
-      "</span></span>" +
-    '<span><span class="label">Overdue</span>' +
-      '<span class="num' + (ck.overdue > 30 ? " warn" : "") + '">' +
-      (ck.overdue > 0 ? ck.overdue + " days" : "None") + "</span></span>" +
-  "</div>";
-}
-
-// One order card. `opts.open` starts it expanded — the approval queue does,
-// because the office is there to act on it, not to go hunting for the lines.
-function orderCard(order, opts) {
-  const open = !!(opts && opts.open);
+function orderCard(order) {
   const c = getCustomer(order.customerId);
   const st = getStatus(order.status);
   const t = orderTotals(order);
-  const items = order.lines.length;
-  const ck = creditCheck(order);
-  const flagged = ck && (ck.over || ck.overdue > 30);
+  const acts = officeActions(order.status);
 
-  return '<article class="ord' + (open ? " is-open" : "") +
-      (flagged && order.status === "pending" ? " is-flagged" : "") +
-      '" data-no="' + order.no + '">' +
-    '<button type="button" class="ord-head" aria-expanded="' + (open ? "true" : "false") + '">' +
+  const buttons = acts.map(function (a) {
+    const cls = a.kind === "ok" ? "btn btn-ok"
+      : a.kind === "danger" ? "btn btn-danger"
+      : a.kind === "ghost" ? "btn-ghost" : "btn";
+    const icon = a.key === "approve" ? TICK : a.key === "reject" ? CROSS : "";
+    return '<button type="button" class="' + cls + '" data-act="' + a.key +
+      '" data-no="' + order.no + '">' + icon + esc(a.label) + "</button>";
+  }).join("");
+
+  return '<article class="ord" data-no="' + order.no + '">' +
+    '<button type="button" class="ord-head" aria-expanded="false">' +
       '<span class="ord-id">' +
         '<span class="ord-no">' + order.no + "</span>" +
         '<span class="ord-date">' + formatDate(order.date) + "</span>" +
@@ -200,14 +424,13 @@ function orderCard(order, opts) {
       '<span class="ord-who">' +
         '<span class="ord-name">' + esc(c ? c.name : "Unknown dealer") + "</span>" +
         '<span class="ord-place">' + esc(c ? c.place : "") +
-          (order.by ? " · " + esc(order.by) : "") + "</span>" +
+          (order.by ? " · sold by " + esc(order.by) : "") + "</span>" +
       "</span>" +
       '<span class="ord-figs">' +
         '<span class="ord-value num">' + rupees(t.value) + "</span>" +
-        '<span class="ord-meta num">' + items +
-          (items === 1 ? " item · " : " items · ") +
-          groupIndian(t.boxes) + " boxes · " +
-          groupIndian(t.pairs) + " pairs</span>" +
+        '<span class="ord-meta num">' + order.lines.length +
+          (order.lines.length === 1 ? " item · " : " items · ") +
+          groupIndian(t.boxes) + " boxes</span>" +
       "</span>" +
       '<span class="ord-status" data-tone="' + st.tone + '">' + st.label + "</span>" +
       '<span class="ord-chev" aria-hidden="true">' +
@@ -216,113 +439,80 @@ function orderCard(order, opts) {
           'stroke-linejoin="round"/></svg>' +
       "</span>" +
     "</button>" +
-    '<div class="ord-body"' + (open ? "" : " hidden") + ">" +
-      (order.note ? '<p class="ord-note">' + esc(order.note) + "</p>" : "") +
-      creditMarkup(order) +
-      '<div class="ord-lines">' + orderLinesMarkup(order) + "</div>" +
-      '<div class="ord-foot">' +
-        "<span>Order value</span>" +
-        '<span class="num">' + rupees(t.value) + "</span>" +
+
+    // the buttons sit on the card, so nothing has to be opened to act on it
+    (buttons ? '<div class="ord-do">' + buttons + "</div>" : "") +
+
+    // revealed by Reject — a reason always goes back to the salesman.
+    // Nothing in here carries an id: the same order can be on screen twice.
+    '<div class="ord-reason" hidden>' +
+      '<span class="label">Why are you rejecting it? The salesman will see this.</span>' +
+      '<div class="ord-reason-row">' +
+        '<input type="text" class="ord-reason-input" autocomplete="off" ' +
+          'aria-label="Reason for rejecting ' + order.no + '" ' +
+          'placeholder="They already owe too much">' +
+        '<button type="button" class="btn btn-danger" data-confirm-reject="' +
+          order.no + '">Reject it</button>' +
+        '<button type="button" class="btn-ghost" data-cancel-reject="' +
+          order.no + '">Cancel</button>' +
       "</div>" +
-      historyMarkup(order) +
-      actionsMarkup(order) +
+    "</div>" +
+
+    '<div class="ord-body" hidden>' +
+      creditLine(order) +
+      '<div class="ord-lines">' + orderLinesMarkup(order) + "</div>" +
+      lastChangeLine(order) +
     "</div>" +
   "</article>";
 }
 
-function renderQueue() {
-  const queue = pendingOrders();
-  const value = queue.reduce(function (a, o) { return a + orderTotals(o).value; }, 0);
+// The credit position as one sentence, read left to right, instead of a
+// grid of figures the reader has to assemble themselves.
+function creditLine(order) {
+  const ck = creditCheck(order);
+  if (!ck) return "";
 
-  el("queueCount").textContent = queue.length === 0
-    ? "Nothing waiting"
-    : queue.length + (queue.length === 1 ? " order · " : " orders · ") + rupees(value);
+  const verdict = ck.over
+    ? '<strong class="warn">' + rupees(Math.abs(ck.headroom)) + " over their limit</strong>"
+    : '<strong class="ok">' + rupees(ck.headroom) + " still left</strong>";
 
-  const flagged = queue.filter(function (o) {
-    const ck = creditCheck(o);
-    return ck && (ck.over || ck.overdue > 30);
-  }).length;
-
-  const lead = el("queueLead");
-  lead.hidden = flagged === 0;
-  if (flagged > 0) {
-    lead.textContent = flagged + (flagged === 1 ? " order needs" : " orders need") +
-      " a credit decision — the dealer is over limit or badly overdue.";
-  }
-
-  el("queueNone").hidden = queue.length > 0;
-  el("queueList").innerHTML = queue.map(function (o) {
-    return orderCard(o, { open: true });
-  }).join("");
-
-  const badge = el("ordersBadge");
-  badge.textContent = queue.length;
-  badge.hidden = queue.length === 0;
+  return '<p class="ord-credit' + (ck.over ? " is-over" : "") + '">' +
+    "<strong>Credit check:</strong> limit " + rupees(ck.customer.creditLimit) +
+    " · already owes " + rupees(ck.customer.outstanding) +
+    " · this order " + rupees(ck.value) + " → " + verdict +
+    (ck.overdue > 30
+      ? ' <span class="warn">(and ' + ck.overdue + " days late paying)</span>"
+      : "") +
+  "</p>";
 }
 
-function renderAllOrders() {
-  const list = filteredOrders();
-
-  el("allCount").textContent = ORDERS.length +
-    (ORDERS.length === 1 ? " order on the book" : " orders on the book");
-
-  el("ordNone").hidden = list.length > 0;
-  el("ordList").innerHTML = list.map(function (o) {
-    return orderCard(o, { open: false });
-  }).join("");
-}
-
-function renderOrdersTab() {
-  renderQueue();
-  renderAllOrders();
+function lastChangeLine(order) {
+  const h = order.history || [];
+  if (h.length === 0) return "";
+  const last = h[h.length - 1];
+  const when = new Date(last.at);
+  const stamp = isNaN(when) ? "" : when.toLocaleDateString("en-IN", {
+    day: "numeric", month: "short"
+  });
+  return '<p class="ord-last">Last change: ' + esc(getStatus(last.status).label) +
+    " by " + esc(last.by) + (stamp ? " on " + stamp : "") + "</p>";
 }
 
 function initOrders() {
-  el("ordFilters").innerHTML = OFFICE_FILTERS.map(function (f) {
-    return '<button type="button" class="cat' +
-      (f.key === ordFilter ? " is-active" : "") +
-      '" data-filter="' + f.key + '">' + f.label + "</button>";
-  }).join("");
-
-  el("ordFilters").addEventListener("click", function (e) {
-    const btn = e.target.closest("[data-filter]");
-    if (!btn) return;
-    ordFilter = btn.dataset.filter;
-    document.querySelectorAll("#ordFilters .cat").forEach(function (c) {
-      c.classList.toggle("is-active", c.dataset.filter === ordFilter);
-    });
-    renderAllOrders();
-  });
-
-  // one handler for both lists — the cards are rebuilt on every change,
-  // so per-button listeners would go stale
-  [el("queueList"), el("ordList")].forEach(function (list) {
-    list.addEventListener("click", onOrderListClick);
-  });
-
-  renderOrdersTab();
+  el("ordList").addEventListener("click", onOrderClick);
 }
 
-function onOrderListClick(e) {
+function onOrderClick(e) {
   const card = e.target.closest(".ord");
 
   const act = e.target.closest("[data-act]");
-  if (act) {
-    handleAction(act.dataset.no, act.dataset.act, card);
-    return;
-  }
+  if (act) return handleAction(act.dataset.no, act.dataset.act, card);
 
-  const confirmReject = e.target.closest("[data-confirm-reject]");
-  if (confirmReject) {
-    doReject(confirmReject.dataset.confirmReject, card);
-    return;
-  }
+  const yes = e.target.closest("[data-confirm-reject]");
+  if (yes) return doReject(yes.dataset.confirmReject, card);
 
-  const cancelReject = e.target.closest("[data-cancel-reject]");
-  if (cancelReject) {
-    closeReason(card);
-    return;
-  }
+  const no = e.target.closest("[data-cancel-reject]");
+  if (no) return closeReason(card);
 
   const head = e.target.closest(".ord-head");
   if (head && card) {
@@ -352,16 +542,12 @@ function closeReason(card) {
 function handleAction(no, key, card) {
   const order = OrderStore.get(no);
   if (!order) {
-    toast("That order is no longer on the book.");
-    renderAll();
-    return;
+    toast("That order is no longer here.");
+    return renderAll();
   }
 
   // rejecting asks for a reason first — the salesman is owed one
-  if (key === "reject") {
-    openReason(card);
-    return;
-  }
+  if (key === "reject") return openReason(card);
 
   const action = officeActions(order.status).find(function (a) { return a.key === key; });
   if (!action) return;
@@ -376,12 +562,8 @@ function doReject(no, card) {
   const input = box && box.querySelector(".ord-reason-input");
   const reason = input ? input.value.trim() : "";
 
-  OrderStore.decide(
-    no,
-    "rejected",
-    "Rejected by office — " + (reason || "no reason given"),
-    me.name
-  );
+  OrderStore.decide(no, "rejected",
+    "Rejected by office — " + (reason || "no reason given"), me.name);
 
   toast(no + " rejected. The salesman has been told why.");
   renderAll();
@@ -389,405 +571,85 @@ function doReject(no, card) {
 
 function noteFor(action, order) {
   const who = " · " + me.name;
-
   if (action.to === "approved") {
     const ck = creditCheck(order);
-    return ck && ck.over
-      ? "Approved on credit override" + who
-      : "Approved by office" + who;
+    return (ck && ck.over ? "Approved even though over limit" : "Approved by office") + who;
   }
-  if (action.to === "production") return "On the production schedule" + who;
-  if (action.to === "ready") return "Made and ready to dispatch" + who;
-  if (action.to === "dispatched") return "Left the godown" + who;
+  if (action.to === "production") return "Sent to the factory" + who;
+  if (action.to === "ready") return "Made and ready to send" + who;
+  if (action.to === "dispatched") return "Sent out from the godown" + who;
   if (action.to === "delivered") return "Delivered to the dealer" + who;
-  if (action.to === "pending") return "Sent back for a fresh decision" + who;
+  if (action.to === "pending") return "Put back for a fresh decision" + who;
   return "";
 }
 
 // ============================================================
-// SALES
+// ADMINISTRATION — one table, picked from the dropdown
 // ============================================================
 
-const STAGE_ROWS = [
-  { key: "pending", label: "Awaiting approval" },
-  { key: "approved", label: "Approved" },
-  { key: "production", label: "In production" },
-  { key: "ready", label: "Ready to dispatch" },
-  { key: "dispatched", label: "Dispatched" },
-  { key: "delivered", label: "Delivered" },
-  { key: "rejected", label: "Rejected" }
-];
+function renderAdmin() {
+  if (view.admin === "dealers") drawDealerAdmin();
+  else if (view.admin === "brands") drawBrandAdmin();
+  else drawStaffAdmin();
 
-// what the company still owes the dealer: everything not rejected
-function liveOrders() {
-  return ORDERS.filter(function (o) { return o.status !== "rejected"; });
+  const touched = ORDERS.filter(function (o) { return (o.history || []).length > 1; }).length;
+  el("demoDataNote").textContent = ORDERS.length + " orders in the system" +
+    (touched > 0 ? ", " + touched + " changed during this run-through" : "") + ".";
 }
 
-function sumValue(list) {
-  return list.reduce(function (a, o) { return a + orderTotals(o).value; }, 0);
+function head(cols) {
+  el("adminHead").innerHTML = cols.map(function (c) { return "<th>" + c + "</th>"; }).join("");
 }
 
-function renderSalesTab() {
-  const live = liveOrders();
-  const queue = pendingOrders();
-  const factory = ORDERS.filter(function (o) {
-    return ["approved", "production", "ready"].indexOf(o.status) !== -1;
-  });
-  const outstanding = CUSTOMERS.reduce(function (a, c) { return a + c.outstanding; }, 0);
-  const overdue = PAYMENTS.filter(function (p) { return p.overdueDays > 30; });
-
-  el("salesAsOf").textContent = "As at " + formatDate(isoToday());
-
-  el("kpiBookValue").textContent = rupees(sumValue(live));
-  el("kpiBookNote").textContent = live.length +
-    (live.length === 1 ? " live order" : " live orders");
-
-  el("kpiPending").textContent = queue.length;
-  el("kpiPendingNote").textContent = queue.length === 0
-    ? "Desk is clear"
-    : rupees(sumValue(queue)) + " to decide";
-
-  el("kpiFactory").textContent = factory.length;
-  el("kpiFactoryNote").textContent = rupees(sumValue(factory)) + " being made";
-
-  el("kpiOutstanding").textContent = rupees(outstanding);
-  el("kpiOutstandingNote").textContent = overdue.length +
-    (overdue.length === 1 ? " invoice" : " invoices") + " over 30 days";
-  el("kpiOutstandingNote").classList.toggle("warn", overdue.length > 0);
-
-  // The stages an order actually travels through, in order. Rejected is a
-  // dead end rather than a stage, so it stays out of the chart and is
-  // reported in the table underneath instead.
-  const pipeline = STAGE_ROWS.filter(function (r) { return r.key !== "rejected"; });
-
-  chartBars("chartStage", pipeline.map(function (row) {
-    const list = ORDERS.filter(function (o) { return o.status === row.key; });
-    const t = list.reduce(function (acc, o) { return acc + orderTotals(o).value; }, 0);
-    return {
-      label: row.label,
-      sub: list.length + (list.length === 1 ? " order" : " orders"),
-      value: t,
-      display: rupees(t),
-      tip: row.label + " \u2014 " + list.length +
-        (list.length === 1 ? " order worth " : " orders worth ") + rupees(t) +
-        (list.length ? " \u00B7 " + list.map(function (o) { return o.no; }).join(", ") : "")
-    };
-  }), { empty: "No orders on the book yet." });
-
-  // by stage
-  el("stageBody").innerHTML = STAGE_ROWS.map(function (row) {
-    const list = ORDERS.filter(function (o) { return o.status === row.key; });
-    const t = list.reduce(function (acc, o) {
-      const ot = orderTotals(o);
-      acc.boxes += ot.boxes;
-      acc.pairs += ot.pairs;
-      acc.value += ot.value;
-      return acc;
-    }, { boxes: 0, pairs: 0, value: 0 });
-    const st = getStatus(row.key);
-
-    return "<tr>" +
-      '<td><span class="t-name">' + esc(row.label) + "</span>" +
-        '<span class="t-sub">' + esc(st.label) + "</span></td>" +
-      '<td class="t-strong">' + list.length + "</td>" +
-      '<td class="muted">' + groupIndian(t.boxes) + "</td>" +
-      '<td class="muted">' + groupIndian(t.pairs) + "</td>" +
-      '<td class="t-strong">' + rupees(t.value) + "</td>" +
-      "</tr>";
-  }).join("");
-
-  // by salesman
-  const byName = Object.create(null);
-  live.forEach(function (o) {
-    const key = o.by || "Unattributed";
-    if (!byName[key]) byName[key] = { orders: 0, pending: 0, value: 0 };
-    byName[key].orders++;
-    if (o.status === "pending") byName[key].pending++;
-    byName[key].value += orderTotals(o).value;
-  });
-
-  const names = Object.keys(byName).sort(function (a, b) {
-    return byName[b].value - byName[a].value;
-  });
-
-  chartBars("chartSalesman", names.map(function (n) {
-    const r = byName[n];
-    return {
-      label: n,
-      sub: r.orders + (r.orders === 1 ? " order" : " orders") +
-        (r.pending > 0 ? " \u00B7 " + r.pending + " waiting" : ""),
-      value: r.value,
-      display: rupees(r.value),
-      tip: n + " \u2014 " + rupees(r.value) + " across " + r.orders +
-        (r.orders === 1 ? " order" : " orders") +
-        (r.pending > 0 ? ", " + r.pending + " still waiting on the office" : "")
-    };
-  }), { empty: "No orders on the book yet." });
-
-  el("salesmanBody").innerHTML = names.length === 0
-    ? '<tr><td colspan="4" class="muted">No orders on the book.</td></tr>'
-    : names.map(function (n) {
-        const r = byName[n];
-        const staff = STAFF.find(function (s) { return s.name === n; });
-        return "<tr>" +
-          '<td><span class="t-name">' + esc(n) + "</span>" +
-            '<span class="t-sub">' + esc(staff ? staff.branch : "—") + "</span></td>" +
-          '<td class="t-strong">' + r.orders + "</td>" +
-          '<td class="t-strong' + (r.pending > 0 ? " warn" : "") + '">' + r.pending + "</td>" +
-          '<td class="t-strong">' + rupees(r.value) + "</td>" +
-          "</tr>";
-      }).join("");
-
-  // How much of each dealer's credit limit is already used up. The end of
-  // the track is the limit, so a full bar needs no explaining.
-  chartMeters("chartCredit", CUSTOMERS.slice().sort(function (a, b) {
-    return (b.outstanding / b.creditLimit) - (a.outstanding / a.creditLimit);
-  }).map(function (c) {
-    const pct = (c.outstanding / c.creditLimit) * 100;
-    const st = creditState(pct);
-    return {
-      label: c.name,
-      sub: c.place + " \u00B7 limit " + rupees(c.creditLimit),
-      pct: pct,
-      display: Math.round(pct) + "%",
-      state: st.state,
-      stateLabel: st.label,
-      tip: c.name + " \u2014 " + rupees(c.outstanding) + " outstanding of a " +
-        rupees(c.creditLimit) + " limit (" + Math.round(pct) + "%). " +
-        rupees(c.creditLimit - c.outstanding) + " of headroom left" +
-        (c.overdueDays > 0 ? ", " + c.overdueDays + " days overdue" : "") + "."
-    };
-  }));
-
-  // top dealers
-  const byDealer = Object.create(null);
-  live.forEach(function (o) {
-    if (!byDealer[o.customerId]) byDealer[o.customerId] = { orders: 0, value: 0 };
-    byDealer[o.customerId].orders++;
-    byDealer[o.customerId].value += orderTotals(o).value;
-  });
-
-  const ids = Object.keys(byDealer).sort(function (a, b) {
-    return byDealer[b].value - byDealer[a].value;
-  });
-
-  chartBars("chartDealer", ids.map(function (id) {
-    const c = getCustomer(id);
-    const r = byDealer[id];
-    return {
-      label: c ? c.name : id,
-      sub: (c ? c.place + " \u00B7 " : "") + r.orders +
-        (r.orders === 1 ? " order" : " orders"),
-      value: r.value,
-      display: rupees(r.value),
-      tip: (c ? c.name : id) + " \u2014 " + rupees(r.value) + " on the book, " +
-        (c ? rupees(c.outstanding) + " still outstanding" : "")
-    };
-  }), { empty: "No orders on the book yet." });
-
-  el("dealerBody").innerHTML = ids.length === 0
-    ? '<tr><td colspan="4" class="muted">No orders on the book.</td></tr>'
-    : ids.map(function (id) {
-        const c = getCustomer(id);
-        const r = byDealer[id];
-        const tight = c && c.outstanding / c.creditLimit > 0.6;
-        return "<tr>" +
-          '<td><span class="t-name">' + esc(c ? c.name : id) + "</span>" +
-            '<span class="t-sub">' + esc(c ? c.place : "") + "</span></td>" +
-          '<td class="t-strong">' + r.orders + "</td>" +
-          '<td class="t-strong">' + rupees(r.value) + "</td>" +
-          '<td class="t-strong' + (tight ? " warn" : "") + '">' +
-            (c ? rupees(c.outstanding) : "—") + "</td>" +
-          "</tr>";
-      }).join("");
-}
-
-// ============================================================
-// PURCHASE
-// ============================================================
-
-const OPEN_PO = ["raised", "sent", "partial"];
-
-function renderPurchaseTab() {
-  const open = PURCHASES.filter(function (p) {
-    return OPEN_PO.indexOf(p.status) !== -1;
-  });
-  const committed = open.reduce(function (a, p) { return a + p.value; }, 0);
-  const short = MATERIALS.filter(function (m) { return m.onHand < m.reorder; });
-
-  el("kpiOpenPo").textContent = open.length;
-  el("kpiOpenPoNote").textContent = PURCHASES.length + " raised in all";
-
-  el("kpiPoValue").textContent = rupees(committed);
-
-  el("kpiReorder").textContent = short.length;
-  el("kpiReorderNote").textContent = short.length === 0
-    ? "Every material is covered"
-    : short.map(function (m) { return m.name; }).join(", ");
-  el("kpiReorderNote").classList.toggle("warn", short.length > 0);
-
-  el("poCount").textContent = open.length + " open · " + rupees(committed) + " committed";
-
-  // the stages a purchase order moves through, in order
-  const PO_STAGES = ["raised", "sent", "partial", "received", "closed"];
-
-  chartBars("chartPoStage", PO_STAGES.map(function (key) {
-    const list = PURCHASES.filter(function (p) { return p.status === key; });
-    const value = list.reduce(function (a, p) { return a + p.value; }, 0);
-    return {
-      label: getPurchaseStatus(key).label,
-      sub: list.length + (list.length === 1 ? " order" : " orders"),
-      value: value,
-      display: rupees(value),
-      tip: getPurchaseStatus(key).label + " \u2014 " + list.length +
-        (list.length === 1 ? " purchase order worth " : " purchase orders worth ") +
-        rupees(value) +
-        (list.length ? " \u00B7 " + list.map(function (p) { return p.no; }).join(", ") : "")
-    };
-  }), { empty: "No purchase orders raised." });
-
-  el("poBody").innerHTML = PURCHASES.map(function (p) {
-    const s = getSupplier(p.supplierId);
-    const st = getPurchaseStatus(p.status);
-    return "<tr>" +
-      '<td><span class="t-name">' + p.no + "</span>" +
-        '<span class="t-sub">' + formatDate(p.date) + "</span></td>" +
-      '<td><span class="t-name">' + esc(s ? s.name : "—") + "</span>" +
-        '<span class="t-sub">' + esc(s ? s.place : "") + "</span></td>" +
-      '<td><span class="t-name">' + esc(p.item) + "</span>" +
-        '<span class="t-sub">' + esc(p.note) + "</span></td>" +
-      '<td class="muted">' + esc(p.qty) + "</td>" +
-      '<td class="t-strong">' + rupees(p.value) + "</td>" +
-      '<td><span class="ord-status" data-tone="' + st.tone + '">' + st.label + "</span></td>" +
-      "</tr>";
-  }).join("");
-
-  // Stock against the level the factory wants held. A full bar is "at level",
-  // so anything short of full is what needs buying in.
-  chartMeters("chartMaterial", MATERIALS.slice().sort(function (a, b) {
-    return (a.onHand / a.reorder) - (b.onHand / b.reorder);
-  }).map(function (m) {
-    const pct = (m.onHand / m.reorder) * 100;
-    const st = coverState(pct);
-    return {
-      label: m.name,
-      sub: groupIndian(m.onHand) + " of " + groupIndian(m.reorder) + " " + m.unit,
-      pct: pct,
-      display: Math.round(pct) + "%",
-      state: st.state,
-      stateLabel: st.label,
-      tip: m.name + " \u2014 " + groupIndian(m.onHand) + " " + m.unit +
-        " on hand against a reorder level of " + groupIndian(m.reorder) + " (" +
-        Math.round(pct) + "%)." +
-        (pct < 100 ? " Short by " + groupIndian(m.reorder - m.onHand) + " " + m.unit + "." : "")
-    };
-  }));
-
-  el("materialBody").innerHTML = MATERIALS.map(function (m) {
-    const low = m.onHand < m.reorder;
-    const cover = Math.round((m.onHand / m.reorder) * 100);
-    return "<tr>" +
-      '<td><span class="t-name">' + esc(m.name) + "</span>" +
-        '<span class="t-sub">in ' + esc(m.unit) + "</span></td>" +
-      '<td class="t-strong' + (low ? " warn" : "") + '">' + groupIndian(m.onHand) + "</td>" +
-      '<td class="muted">' + groupIndian(m.reorder) + "</td>" +
-      '<td class="t-strong' + (low ? " warn" : "") + '">' + cover + "%" +
-        (low ? '<span class="t-sub warn">Reorder</span>' : "") + "</td>" +
-      "</tr>";
-  }).join("");
-
-  chartBars("chartSupplier", SUPPLIERS.map(function (s) {
-    const theirs = PURCHASES.filter(function (p) {
-      return p.supplierId === s.id && OPEN_PO.indexOf(p.status) !== -1;
-    });
-    const value = theirs.reduce(function (a, p) { return a + p.value; }, 0);
-    return {
-      label: s.name,
-      sub: s.supplies,
-      value: value,
-      display: value > 0 ? rupees(value) : "\u2014",
-      tip: s.name + " (" + s.place + ") \u2014 " +
-        (theirs.length
-          ? rupees(value) + " committed on " + theirs.length +
-            (theirs.length === 1 ? " open order" : " open orders")
-          : "nothing open right now") + ". Supplies " + s.supplies + "."
-    };
-  }).sort(function (a, b) { return b.value - a.value; }),
-    { empty: "No open purchase orders." });
-
-  el("supplierBody").innerHTML = SUPPLIERS.map(function (s) {
-    const theirs = PURCHASES.filter(function (p) {
-      return p.supplierId === s.id && OPEN_PO.indexOf(p.status) !== -1;
-    });
-    const value = theirs.reduce(function (a, p) { return a + p.value; }, 0);
-    return "<tr>" +
-      '<td><span class="t-name">' + esc(s.name) + "</span>" +
-        '<span class="t-sub">' + esc(s.place) + "</span></td>" +
-      '<td class="muted">' + esc(s.supplies) + "</td>" +
-      '<td class="t-strong">' + theirs.length + "</td>" +
-      '<td class="t-strong">' + (value > 0 ? rupees(value) : "—") + "</td>" +
-      "</tr>";
-  }).join("");
-}
-
-// ============================================================
-// ADMINISTRATION
-// ============================================================
-
-function renderAdminTab() {
-  el("staffBody").innerHTML = STAFF.map(function (s) {
-    const isMe = s.userId === me.userId;
+function drawStaffAdmin() {
+  head(["Name", "User ID", "Job", "Where", "Can log in?"]);
+  el("adminBody").innerHTML = STAFF.map(function (s) {
     return "<tr>" +
       '<td><span class="t-name">' + esc(s.name) +
-        (isMe ? '<span class="chip chip-soft">You</span>' : "") + "</span>" +
-        '<span class="t-sub">' + esc(roleLabel(s.role)) + "</span></td>" +
+        (s.userId === me.userId ? '<span class="chip chip-soft">You</span>' : "") +
+        "</span></td>" +
       '<td class="muted">' + esc(s.userId) + "</td>" +
       '<td class="muted">' + esc(roleLabel(s.role)) + "</td>" +
       '<td class="muted">' + esc(s.branch) + "</td>" +
       "<td>" + (s.login
-        ? '<span class="chip chip-go">Enabled</span>'
-        : '<span class="chip">Not in demo</span>') + "</td>" +
-      "<td>" + (s.active
-        ? '<span class="chip chip-go">Active</span>'
-        : '<span class="chip chip-stop">Inactive</span>') + "</td>" +
+        ? '<span class="chip chip-go">Yes</span>'
+        : '<span class="chip">Not in this demo</span>') + "</td>" +
       "</tr>";
   }).join("");
+}
 
-  el("creditBody").innerHTML = CUSTOMERS.map(function (c) {
-    const headroom = c.creditLimit - c.outstanding;
-    const tight = headroom < c.creditLimit * 0.25;
+function drawDealerAdmin() {
+  head(["Dealer", "Credit limit", "Owes us", "Left to spend", "Paying late?"]);
+  el("adminBody").innerHTML = CUSTOMERS.map(function (c) {
+    const left = c.creditLimit - c.outstanding;
+    const tight = left < c.creditLimit * 0.25;
     return "<tr>" +
       '<td><span class="t-name">' + esc(c.name) + "</span>" +
         '<span class="t-sub">' + esc(c.place) + "</span></td>" +
       '<td class="t-strong">' + rupees(c.creditLimit) + "</td>" +
       '<td class="t-strong">' + rupees(c.outstanding) + "</td>" +
-      '<td class="t-strong' + (tight ? " warn" : "") + '">' + rupees(headroom) + "</td>" +
-      '<td class="t-strong' + (c.overdueDays > 30 ? " warn" : "") + '">' +
-        (c.overdueDays > 0 ? c.overdueDays + " days" : "None") + "</td>" +
+      '<td class="t-strong' + (tight ? " warn" : "") + '">' + rupees(left) + "</td>" +
+      "<td>" + (c.overdueDays > 30
+        ? '<span class="chip chip-stop">' + c.overdueDays + " days</span>"
+        : c.overdueDays > 0
+          ? '<span class="chip">' + c.overdueDays + " days</span>"
+          : '<span class="chip chip-go">No</span>') + "</td>" +
       "</tr>";
   }).join("");
+}
 
-  el("brandBody").innerHTML = BRANDS.map(function (b) {
+function drawBrandAdmin() {
+  head(["Brand", "Known for", "Products", "Pairs in godown"]);
+  el("adminBody").innerHTML = BRANDS.map(function (b) {
     const arts = ARTICLES.filter(function (a) { return a.brand === b.key; });
     const pairs = arts.reduce(function (a, art) { return a + articleStock(art.code); }, 0);
     return "<tr>" +
-      '<td><span class="t-name">' + esc(b.name) + "</span>" +
-        '<span class="t-sub">' + esc(b.tagline) + "</span></td>" +
-      '<td class="muted">' + esc(arts.length > 0 ? arts[0].category : "—") + "</td>" +
+      '<td><span class="t-name">' + esc(b.name) + "</span></td>" +
+      '<td class="muted">' + esc(b.tagline) + "</td>" +
       '<td class="t-strong">' + arts.length + "</td>" +
       '<td class="t-strong">' + groupIndian(pairs) + "</td>" +
       "</tr>";
   }).join("");
-
-  const placed = ORDERS.filter(function (o) { return (o.history || []).length > 0; }).length;
-  el("demoDataNote").textContent = ORDERS.length + " orders on the book, " +
-    placed + " of them touched during this run-through.";
-
-  el("resetDemoBtn").onclick = function () {
-    OrderStore.reset();
-    toast("Order book reset to the five sample orders.");
-    renderAll();
-  };
 }
 
 // ============================================================
@@ -795,17 +657,24 @@ function renderAdminTab() {
 // ============================================================
 
 function renderAll() {
-  renderSalesTab();
-  renderPurchaseTab();
-  renderOrdersTab();
-  renderAdminTab();
+  renderSales();
+  renderPurchase();
+  renderOrders();
+  renderAdmin();
 }
 
 if (me) {
   renderWho();
   initCharts();
-  initTabs();
+  initShell();
   initOrders();
+
+  el("resetDemoBtn").addEventListener("click", function () {
+    OrderStore.reset();
+    toast("All orders put back to the start.");
+    renderAll();
+  });
+
   renderAll();
 
   // A salesman placing an order in another tab writes to the shared book;
