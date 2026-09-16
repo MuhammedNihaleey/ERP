@@ -6,6 +6,62 @@
 
 const SIZES = ["6-7", "7-8", "8-9", "9-10", "10-11"];
 
+// ============================================================
+// LOGINS
+// Each account belongs to exactly one role. The login screen
+// checks the account against the role picked in the dropdown, so
+// a salesman account cannot sign in as office and vice versa.
+// Only the two roles this demo actually ships a screen for have
+// accounts; the rest are listed as roles but cannot sign in.
+// ============================================================
+
+const ROLES = [
+  { key: "admin",      label: "Super Admin" },
+  { key: "office",     label: "Office" },
+  { key: "salesman",   label: "Salesman" },
+  { key: "production", label: "Production" },
+  { key: "godown",     label: "Godown" },
+  { key: "hr",         label: "HR" },
+  { key: "accounts",   label: "Accounts" }
+];
+
+const USERS = [
+  {
+    userId: "rajesh.k",
+    password: "demo",
+    role: "salesman",
+    name: "Rajesh K",
+    home: "order.html",
+    territory: "Kozhikode \u00B7 Malabar belt"
+  },
+  {
+    userId: "anita.m",
+    password: "demo",
+    role: "office",
+    name: "Anita M",
+    home: "office.html",
+    territory: "Head office \u00B7 Kochi"
+  }
+];
+
+const ROLE_BY_KEY = new Map(ROLES.map(function (r) { return [r.key, r]; }));
+
+function roleLabel(key) {
+  const r = ROLE_BY_KEY.get(key);
+  return r ? r.label : key;
+}
+
+function findUser(userId) {
+  const id = String(userId || "").trim().toLowerCase();
+  return USERS.find(function (u) { return u.userId === id; }) || null;
+}
+
+// roles that have a screen in this prototype
+function roleHasLogin(key) {
+  return USERS.some(function (u) { return u.role === key; });
+}
+
+
 const PRESETS = {
   standard: [4, 5, 6, 5, 4],
   large: [2, 4, 6, 7, 5],
@@ -200,8 +256,40 @@ const ORDER_STATUSES = {
   production: { label: "In production",     tone: "info" },
   ready:      { label: "Ready to dispatch", tone: "info" },
   dispatched: { label: "Dispatched",        tone: "go" },
-  delivered:  { label: "Delivered",         tone: "done" }
+  delivered:  { label: "Delivered",         tone: "done" },
+  rejected:   { label: "Rejected",          tone: "stop" }
 };
+
+// What the office may do to an order in a given state. Each action
+// names the status it moves the order to; the office screen turns
+// these into the buttons on an order card.
+const OFFICE_ACTIONS = {
+  pending: [
+    { key: "approve", label: "Approve",              to: "approved",   kind: "primary" },
+    { key: "reject",  label: "Reject",               to: "rejected",   kind: "danger"  }
+  ],
+  approved: [
+    { key: "produce", label: "Send to production",   to: "production", kind: "primary" },
+    { key: "hold",    label: "Move back to pending", to: "pending",    kind: "ghost"   }
+  ],
+  production: [
+    { key: "ready",   label: "Mark ready to dispatch", to: "ready",    kind: "primary" }
+  ],
+  ready: [
+    { key: "dispatch", label: "Mark dispatched",     to: "dispatched", kind: "primary" }
+  ],
+  dispatched: [
+    { key: "deliver", label: "Mark delivered",       to: "delivered",  kind: "primary" }
+  ],
+  rejected: [
+    { key: "reopen",  label: "Reopen for approval",  to: "pending",    kind: "ghost"   }
+  ],
+  delivered: []
+};
+
+function officeActions(status) {
+  return OFFICE_ACTIONS[status] || [];
+}
 
 function getStatus(key) {
   return ORDER_STATUSES[key] || ORDER_STATUSES.pending;
@@ -212,6 +300,7 @@ function getStatus(key) {
 const ORDERS = [
   {
     no: "SO-2450",
+    by: "Rajesh K",
     customerId: "c3",
     date: "2026-08-25",
     status: "dispatched",
@@ -223,6 +312,7 @@ const ORDERS = [
   },
   {
     no: "SO-2449",
+    by: "Rajesh K",
     customerId: "c1",
     date: "2026-08-24",
     status: "production",
@@ -235,6 +325,7 @@ const ORDERS = [
   },
   {
     no: "SO-2448",
+    by: "Suresh P",
     customerId: "c5",
     date: "2026-08-22",
     status: "approved",
@@ -245,6 +336,7 @@ const ORDERS = [
   },
   {
     no: "SO-2447",
+    by: "Rajesh K",
     customerId: "c2",
     date: "2026-08-20",
     status: "pending",
@@ -256,6 +348,7 @@ const ORDERS = [
   },
   {
     no: "SO-2446",
+    by: "Suresh P",
     customerId: "c6",
     date: "2026-08-16",
     status: "delivered",
@@ -272,3 +365,84 @@ const CUSTOMER_BY_ID = new Map(CUSTOMERS.map(function (c) { return [c.id, c]; })
 function getCustomer(id) {
   return CUSTOMER_BY_ID.get(id);
 }
+
+
+// ============================================================
+// PURCHASE — raw material bought in for the factory
+// Office sees this side of the ledger; a salesman never does.
+// ============================================================
+
+const SUPPLIERS = [
+  { id: "s1", name: "Kerala Polymers",        place: "Kalamassery", supplies: "PVC compound" },
+  { id: "s2", name: "Coimbatore Strap Works", place: "Coimbatore",  supplies: "Straps & buckles" },
+  { id: "s3", name: "Nilgiri Rubber Mills",   place: "Ooty",        supplies: "Sole rubber sheet" },
+  { id: "s4", name: "Ernad Packaging",        place: "Malappuram",  supplies: "Cartons & printing" },
+  { id: "s5", name: "Southern Chem Agencies", place: "Kochi",       supplies: "Adhesive & pigment" }
+];
+
+const SUPPLIER_BY_ID = new Map(SUPPLIERS.map(function (s) { return [s.id, s]; }));
+
+function getSupplier(id) {
+  return SUPPLIER_BY_ID.get(id);
+}
+
+const PURCHASE_STATUSES = {
+  raised:   { label: "Raised",         tone: "wait" },
+  sent:     { label: "Sent to supplier", tone: "info" },
+  partial:  { label: "Part received",  tone: "info" },
+  received: { label: "Received",       tone: "go" },
+  closed:   { label: "Closed",         tone: "done" }
+};
+
+function getPurchaseStatus(key) {
+  return PURCHASE_STATUSES[key] || PURCHASE_STATUSES.raised;
+}
+
+const PURCHASES = [
+  { no: "PO-1188", supplierId: "s1", date: "2026-09-12", status: "raised",
+    item: "PVC compound \u2014 natural", qty: "8,000 kg", value: 624000,
+    note: "For the October gents run" },
+  { no: "PO-1187", supplierId: "s3", date: "2026-09-10", status: "sent",
+    item: "Sole rubber sheet 4mm", qty: "1,200 sheets", value: 318000,
+    note: "Delivery promised 20 Sep" },
+  { no: "PO-1186", supplierId: "s2", date: "2026-09-06", status: "partial",
+    item: "Ladies band straps", qty: "26,000 pairs", value: 197500,
+    note: "14,000 pairs in, balance on 18 Sep" },
+  { no: "PO-1185", supplierId: "s4", date: "2026-09-02", status: "received",
+    item: "Printed cartons \u2014 all brands", qty: "9,500 nos", value: 142500,
+    note: "GRN 4412 \u00B7 checked into godown" },
+  { no: "PO-1184", supplierId: "s5", date: "2026-08-28", status: "closed",
+    item: "Adhesive & pigment", qty: "640 kg", value: 86400,
+    note: "Invoice settled 5 Sep" },
+  { no: "PO-1183", supplierId: "s1", date: "2026-08-22", status: "closed",
+    item: "PVC compound \u2014 black", qty: "6,500 kg", value: 507000,
+    note: "Invoice settled 1 Sep" }
+];
+
+// Raw material on hand, against the level the factory wants held.
+const MATERIALS = [
+  { name: "PVC compound \u2014 natural", unit: "kg",     onHand: 2400, reorder: 4000 },
+  { name: "PVC compound \u2014 black",   unit: "kg",     onHand: 5100, reorder: 4000 },
+  { name: "Sole rubber sheet 4mm",       unit: "sheets", onHand: 380,  reorder: 600  },
+  { name: "Gents thong straps",          unit: "pairs",  onHand: 18500, reorder: 15000 },
+  { name: "Ladies band straps",          unit: "pairs",  onHand: 9200, reorder: 12000 },
+  { name: "Printed cartons",             unit: "nos",    onHand: 7400, reorder: 5000 },
+  { name: "Adhesive",                    unit: "kg",     onHand: 210,  reorder: 300  }
+];
+
+// ============================================================
+// ADMINISTRATION — the staff directory behind the logins
+// "login" marks the two accounts this prototype actually ships a
+// screen for; the rest are listed but cannot sign in yet.
+// ============================================================
+
+const STAFF = [
+  { name: "Anita M",   userId: "anita.m",   role: "office",     branch: "Head office \u00B7 Kochi",   active: true,  login: true },
+  { name: "Rajesh K",  userId: "rajesh.k",  role: "salesman",   branch: "Kozhikode",                  active: true,  login: true },
+  { name: "Suresh P",  userId: "suresh.p",  role: "salesman",   branch: "Kollam",                     active: true,  login: false },
+  { name: "Devika R",  userId: "devika.r",  role: "accounts",   branch: "Head office \u00B7 Kochi",   active: true,  login: false },
+  { name: "Jomon T",   userId: "jomon.t",   role: "production", branch: "Factory \u00B7 Aluva",       active: true,  login: false },
+  { name: "Basheer A", userId: "basheer.a", role: "godown",     branch: "Godown \u00B7 Aluva",        active: true,  login: false },
+  { name: "Leena S",   userId: "leena.s",   role: "hr",         branch: "Head office \u00B7 Kochi",   active: false, login: false },
+  { name: "N. Menon",  userId: "n.menon",   role: "admin",      branch: "Head office \u00B7 Kochi",   active: true,  login: false }
+];

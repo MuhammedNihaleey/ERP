@@ -1,7 +1,12 @@
 // ============================================================
 // SAMPLE FOOTWEAR ERP — salesman screen
-// Vanilla JS, no dependencies, everything in memory.
+// Vanilla JS, no dependencies. Products, stock and dealers come
+// from data.js; orders live in the shared book in store.js, which
+// is how an order reaches the office and a decision comes back.
 // ============================================================
+
+// nobody but a salesman gets this page
+const me = Session.require("salesman");
 
 const PAIRS_PER_BOX = 24;
 
@@ -30,50 +35,6 @@ function itemValid(item) {
   return ratioTotal(item) === PAIRS_PER_BOX;
 }
 
-// ---------- helpers ----------
-
-// 142500 -> "1,42,500"  (Indian digit grouping)
-function groupIndian(n) {
-  const s = String(Math.round(Math.abs(n)));
-  if (s.length <= 3) return s;
-  const last3 = s.slice(-3);
-  const rest = s.slice(0, -3);
-  return rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + last3;
-}
-
-function rupees(n) {
-  return "₹" + groupIndian(n);
-}
-
-// ids are stable for the life of the page; only container contents change
-const elCache = Object.create(null);
-
-function el(id) {
-  let node = elCache[id];
-  if (!node || !node.isConnected) {
-    node = document.getElementById(id);
-    elCache[id] = node;
-  }
-  return node;
-}
-
-function esc(str) {
-  return String(str).replace(/[&<>"]/g, function (c) {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
-  });
-}
-
-const reduceMotion = window.matchMedia &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-// replay a one-shot CSS animation class
-function flash(node, cls) {
-  if (!node || reduceMotion) return;
-  node.classList.remove(cls);
-  void node.offsetWidth;
-  node.classList.add(cls);
-}
-
 // ---------- state ----------
 
 const state = {
@@ -93,6 +54,16 @@ let nextItemId = 1;
 // ============================================================
 // TOP BAR + TABS
 // ============================================================
+
+function renderWho() {
+  el("whoami").textContent = "Salesman \u00B7 " + me.name +
+    (me.territory ? " \u00B7 " + me.territory : "");
+
+  el("signOutBtn").addEventListener("click", function () {
+    Session.signOut();
+    window.location.href = "index.html";
+  });
+}
 
 function renderDate() {
   const d = new Date();
@@ -155,97 +126,6 @@ function renderCustomerFigures() {
   const od = el("figOverdue");
   od.textContent = c.overdueDays > 0 ? c.overdueDays + " days" : "None";
   od.classList.toggle("warn", c.overdueDays > 0);
-}
-
-// ============================================================
-// PRODUCT ILLUSTRATION
-// Drawn as inline SVG rather than shipped photos: it recolours
-// live from the colour dropdown and adds no external files.
-// ============================================================
-
-const COLOUR_HEX = {
-  Black: { body: "#2E2A29", dark: "#171514", light: "#4A4443" },
-  Brown: { body: "#7A4E2E", dark: "#4E301A", light: "#9A6A43" },
-  Blue:  { body: "#2F5488", dark: "#1D3660", light: "#4670AC" }
-};
-
-// One sole outline, transformed per family, plus a strap style each.
-// Toe at the top, viewed from above.
-const SOLE =
-  "M50 12c17 0 30 12 30 32 0 16-6 26-7 40-1 16 5 38 1 56-3 14-12 22-24 22" +
-  "s-21-8-24-22c-4-18 2-40 1-56-1-14-7-24-7-40 0-20 13-32 30-32Z";
-
-const FAMILY = {
-  GTS: { squash: "", strap: "thong", width: 10 },
-  LDS: { squash: "translate(50 87) scale(0.90 1) translate(-50 -87)", strap: "band", width: 7 },
-  KID: { squash: "translate(50 87) scale(0.96 0.82) translate(-50 -87)", strap: "thong", width: 9 }
-};
-
-function strapMarkup(style, c, w) {
-  if (style === "band") {
-    return '<path d="M21 66c9-11 49-11 58 0" fill="none" stroke="' + c.dark +
-        '" stroke-width="' + w + '" stroke-linecap="round"/>' +
-      '<path d="M26 78c8-7 40-7 48 0" fill="none" stroke="' + c.dark +
-        '" stroke-width="' + (w - 2) + '" stroke-linecap="round" opacity="0.75"/>';
-  }
-
-  if (style === "cross") {
-    return '<path d="M23 78C38 70 58 58 74 62" fill="none" stroke="' + c.dark +
-        '" stroke-width="' + w + '" stroke-linecap="round"/>' +
-      '<path d="M77 78C62 70 42 58 26 62" fill="none" stroke="' + c.dark +
-        '" stroke-width="' + w + '" stroke-linecap="round"/>';
-  }
-
-  if (style === "tstrap") {
-    return '<path d="M22 72c10-10 46-10 56 0" fill="none" stroke="' + c.dark +
-        '" stroke-width="' + w + '" stroke-linecap="round"/>' +
-      '<path d="M50 40v30" fill="none" stroke="' + c.dark +
-        '" stroke-width="' + (w - 3) + '" stroke-linecap="round"/>' +
-      '<circle cx="50" cy="38" r="4" fill="' + c.dark + '"/>';
-  }
-
-  return '<path d="M50 44C45 55 38 64 27 71" fill="none" stroke="' + c.dark +
-      '" stroke-width="' + w + '" stroke-linecap="round"/>' +
-    '<path d="M50 44c5 11 12 20 23 27" fill="none" stroke="' + c.dark +
-      '" stroke-width="' + w + '" stroke-linecap="round"/>' +
-    '<circle cx="50" cy="39" r="4.5" fill="' + c.dark + '"/>';
-}
-
-// the same article/colour is drawn many times across the strips and grid,
-// so build each combination once
-const svgCache = new Map();
-
-function chappalSVG(articleCode, colourName) {
-  const key = articleCode + "|" + colourName;
-  let cached = svgCache.get(key);
-  if (cached === undefined) {
-    cached = buildChappal(articleCode, colourName);
-    svgCache.set(key, cached);
-  }
-  return cached;
-}
-
-function buildChappal(articleCode, colourName) {
-  const fam = FAMILY[articleCode.split("-")[0]] || FAMILY.GTS;
-  const c = COLOUR_HEX[colourName] || COLOUR_HEX.Black;
-  const meta = getArticle(articleCode);
-  const strap = (meta && meta.style) || fam.strap;
-
-  return '<svg class="chappal" viewBox="0 0 100 176" role="img" aria-label="' +
-    articleCode + " in " + colourName + '">' +
-      '<ellipse class="ch-shadow" cx="50" cy="167" rx="27" ry="4.5"/>' +
-      '<g' + (fam.squash ? ' transform="' + fam.squash + '"' : "") + ">" +
-        '<path class="ch-sole" d="' + SOLE + '" fill="' + c.body +
-          '" stroke="' + c.dark + '" stroke-width="3"/>' +
-        '<path d="M31 96c12 5 26 5 38 0" fill="none" stroke="' + c.dark +
-          '" stroke-width="1.6" opacity="0.3"/>' +
-        '<path d="M33 124c11 4 23 4 34 0" fill="none" stroke="' + c.dark +
-          '" stroke-width="1.6" opacity="0.22"/>' +
-        strapMarkup(strap, c, fam.width) +
-        '<path class="ch-shine" d="M28 52c1-14 8-24 17-28" fill="none" stroke="' +
-          c.light + '" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>' +
-      "</g>" +
-    "</svg>";
 }
 
 // ============================================================
@@ -354,7 +234,13 @@ function showTab(name) {
     drawSelected();
   }
 
-  if (name === "pending") renderPendingTab();
+  if (name === "pending") {
+    renderPendingTab();
+    // opening the tab is what marks the office's decisions as read —
+    // done after the render so the banner is still shown this once
+    OrderStore.markSeen(isMine);
+    renderPendingBadge();
+  }
 
   renderBagBar();
   window.scrollTo(0, 0);
@@ -1324,13 +1210,6 @@ function openReview() {
   showTab("review");
 }
 
-function isoToday() {
-  const d = new Date();
-  return d.getFullYear() + "-" +
-    String(d.getMonth() + 1).padStart(2, "0") + "-" +
-    String(d.getDate()).padStart(2, "0");
-}
-
 function renderReview() {
   const c = state.customer;
 
@@ -1385,8 +1264,9 @@ function placeOrder() {
   const c = state.customer;
   if (!c || state.items.length === 0) return;
 
-  const orderNo = "SO-" + nextOrderNumber;
-  nextOrderNumber++;
+  // claimed from the shared book, so an order placed in another tab
+  // cannot end up with the same number
+  const orderNo = OrderStore.claimOrderNo();
 
   const boxes = state.items.reduce(function (a, i) { return a + i.boxes; }, 0);
   const pairs = state.items.reduce(function (a, i) { return a + itemPairs(i); }, 0);
@@ -1394,9 +1274,11 @@ function placeOrder() {
   const over = (c.creditLimit - c.outstanding - value) < 0;
 
   // A placed order keeps its own copy of every line, resolved ratio and all,
-  // so later edits to the working order can never reach back into it.
-  ORDERS.unshift({
+  // so later edits to the working order can never reach back into it. It goes
+  // into the shared book, which is where the office picks it up.
+  OrderStore.place({
     no: orderNo,
+    by: me.name,
     customerId: c.id,
     date: isoToday(),
     status: "pending",
@@ -1435,15 +1317,6 @@ function placeOrder() {
   el("successDone").focus();
 }
 
-// CSS animations only fire once, so reset them to replay the tick
-// every time an order is placed — not just the first.
-function restartAnimations(root) {
-  const nodes = [root].concat(Array.prototype.slice.call(root.querySelectorAll("*")));
-  nodes.forEach(function (n) { n.style.animation = "none"; });
-  void root.offsetWidth;
-  nodes.forEach(function (n) { n.style.animation = ""; });
-}
-
 function closeSuccess(dest) {
   if (el("successOverlay").hidden) return;
   el("successOverlay").hidden = true;
@@ -1478,7 +1351,8 @@ const ORDER_FILTERS = [
   { key: "pending", label: "Awaiting approval", has: ["pending"] },
   { key: "making", label: "In production", has: ["approved", "production", "ready"] },
   { key: "dispatched", label: "Dispatched", has: ["dispatched"] },
-  { key: "delivered", label: "Delivered", has: ["delivered"] }
+  { key: "delivered", label: "Delivered", has: ["delivered"] },
+  { key: "rejected", label: "Rejected", has: ["rejected"] }
 ];
 
 function initPending() {
@@ -1511,42 +1385,85 @@ function initPending() {
   renderPendingTab();
 }
 
-function lineRatioTotal(line) {
-  return line.ratio.reduce(function (a, b) { return a + b; }, 0);
-}
-
-function linePairs(line) {
-  return line.boxes * lineRatioTotal(line);
-}
-
-function lineValue(line) {
-  const art = getArticle(line.code);
-  return art ? linePairs(line) * art.rate : 0;
-}
-
-function orderTotals(order) {
-  return order.lines.reduce(function (t, l) {
-    t.boxes += l.boxes;
-    t.pairs += linePairs(l);
-    t.value += lineValue(l);
-    return t;
-  }, { boxes: 0, pairs: 0, value: 0 });
+// A salesman's own order book. The office sees every salesman's orders;
+// this screen only ever shows the signed-in one's.
+function myOrders() {
+  return OrderStore.forSalesman(me.name);
 }
 
 function filteredOrders() {
   const f = ORDER_FILTERS.find(function (x) { return x.key === state.ordFilter; });
-  if (!f || !f.has) return ORDERS;
-  return ORDERS.filter(function (o) { return f.has.indexOf(o.status) !== -1; });
+  const mine = myOrders();
+  if (!f || !f.has) return mine;
+  return mine.filter(function (o) { return f.has.indexOf(o.status) !== -1; });
+}
+
+// ============================================================
+// WHAT THE OFFICE DECIDED
+// The other half of the loop. Approvals and rejections are made on
+// office.html and written to the shared order book; these three bits
+// are how they surface here — a banner on the tab, a count on the tab
+// button, and a toast if the office acts while this screen is open.
+// ============================================================
+
+function isMine(order) {
+  return order.by === me.name;
+}
+
+// statuses that mean the office has looked at the order
+const DECIDED = ["approved", "rejected", "production", "ready", "dispatched", "delivered"];
+
+function renderDecisionLead(list) {
+  const lead = el("decisionLead");
+  const fresh = list.filter(function (o) {
+    return o.unseen && DECIDED.indexOf(o.status) !== -1;
+  });
+
+  if (fresh.length === 0) {
+    lead.hidden = true;
+    return;
+  }
+
+  const names = fresh.map(function (o) {
+    return o.no + " \u2014 " + getStatus(o.status).label.toLowerCase();
+  });
+
+  lead.textContent = (fresh.length === 1 ? "The office has decided: " : "The office has decided on " +
+    fresh.length + " orders: ") + names.join(", ") + ".";
+  lead.hidden = false;
+  flash(lead, "is-in");
+}
+
+function renderPendingBadge() {
+  const n = OrderStore.unseenCount(isMine);
+  const badge = el("pendingBadge");
+  badge.textContent = n;
+  badge.hidden = n === 0;
+}
+
+let toastTimer = null;
+
+function toast(msg) {
+  const box = el("toast");
+  box.textContent = msg;
+  box.hidden = false;
+  flash(box, "is-in");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { box.hidden = true; }, 4200);
 }
 
 function renderPendingTab() {
   const list = filteredOrders();
-  const awaiting = ORDERS.filter(function (o) {
-    return o.status !== "delivered";
+  const mine = myOrders();
+  const awaiting = mine.filter(function (o) {
+    return o.status !== "delivered" && o.status !== "rejected";
   }).length;
 
   el("pendingCount").textContent =
     awaiting + (awaiting === 1 ? " order open" : " orders open");
+
+  renderDecisionLead(mine);
+  renderPendingBadge();
 
   el("ordNone").hidden = list.length > 0;
 
@@ -1556,23 +1473,7 @@ function renderPendingTab() {
     const t = orderTotals(o);
     const items = o.lines.length;
 
-    const lines = o.lines.map(function (l) {
-      const art = getArticle(l.code);
-      const col = COLOUR_HEX[l.colour] || COLOUR_HEX.Black;
-      return '<div class="ordline">' +
-        '<span class="ordline-img">' + chappalSVG(l.code, l.colour) + "</span>" +
-        '<span class="ordline-main">' +
-          '<span class="ordline-code">' + l.code + "</span>" +
-          '<span class="ordline-name">' + esc(art ? art.name : "") + "</span>" +
-        "</span>" +
-        '<span class="ordline-meta num">' +
-          '<span class="rev-dot" style="background:' + col.body + '"></span>' +
-          l.colour + " \u00B7 " + l.ratio.join("-") + " \u00B7 " + l.boxes +
-          (l.boxes === 1 ? " box" : " boxes") + " \u00B7 " +
-          groupIndian(linePairs(l)) + " pairs</span>" +
-        '<span class="ordline-value num">' + rupees(lineValue(l)) + "</span>" +
-      "</div>";
-    }).join("");
+    const lines = orderLinesMarkup(o);
 
     return '<article class="ord" data-no="' + o.no + '">' +
       '<button type="button" class="ord-head" aria-expanded="false">' +
@@ -1614,12 +1515,6 @@ function renderPendingTab() {
 // ============================================================
 // READ-ONLY TABS
 // ============================================================
-
-function formatDate(iso) {
-  const p = iso.split("-");
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return parseInt(p[2], 10) + " " + months[parseInt(p[1], 10) - 1] + " " + p[0];
-}
 
 function renderCustomersTab() {
   el("customersBody").innerHTML = CUSTOMERS.map(function (c) {
@@ -1667,18 +1562,47 @@ function renderPaymentsTab() {
 // BOOT
 // ============================================================
 
-renderDate();
-initSound();
-initTabs();
-initCustomers();
-initShop();
-initRail();
-initPicker();
-initSelected();
-initReview();
-initPending();
-renderSelected();
-renderTotals();
-renderCustomersTab();
-renderStockTab();
-renderPaymentsTab();
+if (me) {
+  renderWho();
+  renderDate();
+  initSound();
+  initTabs();
+  initCustomers();
+  initShop();
+  initRail();
+  initPicker();
+  initSelected();
+  initReview();
+  initPending();
+  renderSelected();
+  renderTotals();
+  renderCustomersTab();
+  renderStockTab();
+  renderPaymentsTab();
+
+  // The office deciding on an order in another tab writes to the shared
+  // book. Redraw, and say so out loud — this is the moment the demo is
+  // built around.
+  const lastStatus = Object.create(null);
+  myOrders().forEach(function (o) { lastStatus[o.no] = o.status; });
+
+  OrderStore.onChange(function () {
+    myOrders().forEach(function (o) {
+      const was = lastStatus[o.no];
+      if (was !== undefined && was !== o.status) {
+        toast(o.no + " \u2014 " + getStatus(o.status).label.toLowerCase() +
+          " by the office.");
+      }
+      lastStatus[o.no] = o.status;
+    });
+
+    renderPendingTab();
+
+    // If they are sitting on the pending tab, the banner and toast have
+    // already told them — so those count as read straight away.
+    if (!el("panel-pending").hidden) {
+      OrderStore.markSeen(isMine);
+      renderPendingBadge();
+    }
+  });
+}

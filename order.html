@@ -15,7 +15,7 @@
       <span class="brandmark-badge">SF</span>
       <span class="brandmark-text">
         <span class="brandmark-name">Sample Footwear</span>
-        <span class="brandmark-role">Salesman · Rajesh K</span>
+        <span class="brandmark-role" id="whoami">Salesman</span>
       </span>
     </div>
     <div class="topbar-right">
@@ -28,6 +28,7 @@
         <span class="bagbtn-count" id="bagCount">0</span>
       </button>
       <button class="sound-toggle" id="soundToggle" aria-pressed="true" title="Sound on"></button>
+      <button class="signout" id="signOutBtn">Sign out</button>
     </div>
   </div>
 </header>
@@ -36,7 +37,10 @@
   <nav class="tabs" id="tabs">
     <button class="tab is-active" data-tab="shop">Shop</button>
     <button class="tab" data-tab="order">Order</button>
-    <button class="tab" data-tab="pending">Pending Orders</button>
+    <button class="tab" data-tab="pending">
+      Pending Orders
+      <span class="tab-badge" id="pendingBadge" hidden>0</span>
+    </button>
     <button class="tab" data-tab="customers">My Customers</button>
     <button class="tab" data-tab="stock">Stock</button>
     <button class="tab" data-tab="payments">Payments</button>
@@ -288,6 +292,8 @@
         <span class="hint" id="pendingCount"></span>
       </div>
 
+      <p class="queue-lead" id="decisionLead" hidden></p>
+
       <nav class="cats" id="ordFilters"></nav>
       <div class="ord-list" id="ordList"></div>
       <p class="picker-none" id="ordNone" hidden>No orders with that status.</p>
@@ -385,7 +391,12 @@
   </div>
 </div>
 
+<!-- live word of an office decision made in another tab -->
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
 <script src="js/data.js"></script>
+<script src="js/common.js"></script>
+<script src="js/store.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

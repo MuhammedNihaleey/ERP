@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sample Footwear — Office</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%226%22%20fill%3D%22%23B3202C%22%2F%3E%3Ctext%20x%3D%2216%22%20y%3D%2222%22%20font-family%3D%22Helvetica%2CArial%2Csans-serif%22%20font-size%3D%2214%22%20font-weight%3D%22bold%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3ESF%3C%2Ftext%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brandmark">
+      <span class="brandmark-badge">SF</span>
+      <span class="brandmark-text">
+        <span class="brandmark-name">Sample Footwear</span>
+        <span class="brandmark-role" id="whoami">Office</span>
+      </span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="todayDate"></span>
+      <button class="signout" id="signOutBtn">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<div class="tabs-wrap">
+  <nav class="tabs" id="tabs">
+    <button class="tab is-active" data-tab="sales">Sales</button>
+    <button class="tab" data-tab="purchase">Purchase</button>
+    <button class="tab" data-tab="orders">
+      Order
+      <span class="tab-badge" id="ordersBadge" hidden>0</span>
+    </button>
+    <button class="tab" data-tab="admin">Administration</button>
+  </nav>
+</div>
+
+<main>
+
+  <!-- ================= SALES ================= -->
+  <section class="panel" id="panel-sales">
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Sales at a glance</h2>
+        <span class="hint" id="salesAsOf"></span>
+      </div>
+
+      <div class="figures figures-4">
+        <div class="figure">
+          <span class="label">Order book</span>
+          <div class="figure-value num" id="kpiBookValue">—</div>
+          <div class="figure-note" id="kpiBookNote"></div>
+        </div>
+        <div class="figure">
+          <span class="label">Awaiting approval</span>
+          <div class="figure-value num" id="kpiPending">—</div>
+          <div class="figure-note" id="kpiPendingNote"></div>
+        </div>
+        <div class="figure">
+          <span class="label">In the factory</span>
+          <div class="figure-value num" id="kpiFactory">—</div>
+          <div class="figure-note" id="kpiFactoryNote"></div>
+        </div>
+        <div class="figure">
+          <span class="label">Outstanding</span>
+          <div class="figure-value num" id="kpiOutstanding">—</div>
+          <div class="figure-note" id="kpiOutstandingNote"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Order book by stage</h2>
+        <span class="hint">Every order in the system</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Orders</th>
+              <th>Boxes</th>
+              <th>Pairs</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody id="stageBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">By salesman</h2>
+        <span class="hint">Live order book, rejected orders excluded</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Salesman</th>
+              <th>Orders</th>
+              <th>Pending</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody id="salesmanBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Top dealers</h2>
+        <span class="hint">By value on the order book</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Dealer</th>
+              <th>Orders</th>
+              <th>Value</th>
+              <th>Outstanding</th>
+            </tr>
+          </thead>
+          <tbody id="dealerBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ================= PURCHASE ================= -->
+  <section class="panel" id="panel-purchase" hidden>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Purchase at a glance</h2>
+        <span class="hint">Raw material bought in for the factory</span>
+      </div>
+
+      <div class="figures">
+        <div class="figure">
+          <span class="label">Open POs</span>
+          <div class="figure-value num" id="kpiOpenPo">—</div>
+          <div class="figure-note" id="kpiOpenPoNote"></div>
+        </div>
+        <div class="figure">
+          <span class="label">Committed spend</span>
+          <div class="figure-value num" id="kpiPoValue">—</div>
+          <div class="figure-note">On open purchase orders</div>
+        </div>
+        <div class="figure">
+          <span class="label">Below reorder level</span>
+          <div class="figure-value num" id="kpiReorder">—</div>
+          <div class="figure-note" id="kpiReorderNote"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Purchase orders</h2>
+        <span class="hint" id="poCount"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>PO</th>
+              <th>Supplier</th>
+              <th>Material</th>
+              <th>Quantity</th>
+              <th>Value</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="poBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Material on hand</h2>
+        <span class="hint">Anything under its reorder level is flagged</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>On hand</th>
+              <th>Reorder level</th>
+              <th>Cover</th>
+            </tr>
+          </thead>
+          <tbody id="materialBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Suppliers</h2>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Supplier</th>
+              <th>Supplies</th>
+              <th>Open POs</th>
+              <th>Committed</th>
+            </tr>
+          </thead>
+          <tbody id="supplierBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ================= ORDER — the approval desk ================= -->
+  <section class="panel" id="panel-orders" hidden>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Waiting on the office</h2>
+        <span class="hint" id="queueCount"></span>
+      </div>
+
+      <p class="queue-lead" id="queueLead" hidden></p>
+      <div class="ord-list" id="queueList"></div>
+      <p class="picker-none" id="queueNone" hidden>
+        Nothing waiting — every order has been decided.
+      </p>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">All orders</h2>
+        <span class="hint" id="allCount"></span>
+      </div>
+
+      <nav class="cats" id="ordFilters"></nav>
+      <div class="ord-list" id="ordList"></div>
+      <p class="picker-none" id="ordNone" hidden>No orders with that status.</p>
+    </div>
+
+  </section>
+
+  <!-- ================= ADMINISTRATION ================= -->
+  <section class="panel" id="panel-admin" hidden>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Users &amp; roles</h2>
+        <span class="hint">Two roles have a screen in this demo</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>User ID</th>
+              <th>Role</th>
+              <th>Branch</th>
+              <th>Login</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="staffBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Dealer credit control</h2>
+        <span class="hint">Limits the order screen checks against</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Dealer</th>
+              <th>Credit limit</th>
+              <th>Outstanding</th>
+              <th>Headroom</th>
+              <th>Overdue</th>
+            </tr>
+          </thead>
+          <tbody id="creditBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Companies &amp; brands</h2>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Brand</th>
+              <th>Range</th>
+              <th>Articles</th>
+              <th>Pairs in godown</th>
+            </tr>
+          </thead>
+          <tbody id="brandBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">Demo data</h2>
+        <span class="hint">Shared order book, held in this browser</span>
+      </div>
+      <p class="hint" id="demoDataNote"></p>
+      <div class="submit-row">
+        <button class="btn-ghost" id="resetDemoBtn">Reset demo orders</button>
+        <span class="hint">
+          Puts the order book back to its five sample orders and clears
+          anything placed during a run-through.
+        </span>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- live word of a change made in another tab -->
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+<script src="js/data.js"></script>
+<script src="js/common.js"></script>
+<script src="js/store.js"></script>
+<script src="js/office.js"></script>
+</body>
+</html>
