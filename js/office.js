@@ -786,6 +786,8 @@ function saveProduct() {
     stock: stockByColour,
     image: photoData || null,
     isNew: true,                 // it lands in the shop's New launches strip
+    // not shown anywhere — it marks which products may be taken off the
+    // list again, so the range the demo ships with cannot be deleted
     addedBy: me.name,
     addedOn: isoToday()
   });
@@ -809,10 +811,8 @@ function removeProduct(code) {
 }
 
 function renderProducts() {
-  const mine = ProductStore.added();
-
-  el("productCount").textContent = ARTICLES.length + " products" +
-    (mine.length ? " \u00B7 " + mine.length + " added by the office" : "");
+  el("productCount").textContent = ARTICLES.length +
+    (ARTICLES.length === 1 ? " product" : " products");
 
   el("prodList").innerHTML = ARTICLES.map(function (a) {
     const brand = getBrand(a.brand);
@@ -826,9 +826,7 @@ function renderProducts() {
     return '<article class="prod">' +
       '<span class="prod-img">' + productImage(a.code, a.colours[0]) + "</span>" +
       '<span class="prod-main">' +
-        '<span class="prod-code">' + esc(a.code) +
-          (a.addedBy ? '<span class="chip chip-soft">Added by office</span>' : "") +
-        "</span>" +
+        '<span class="prod-code">' + esc(a.code) + "</span>" +
         '<span class="prod-name">' + esc(a.name) + "</span>" +
         '<span class="prod-sub">' + esc(brand ? brand.name : "") + " \u00B7 " +
           esc(roleFreeCategory(a.category)) + "</span>" +

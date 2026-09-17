@@ -355,15 +355,6 @@ const ProductStore = (function () {
     return ARTICLES.slice();
   }
 
-  // products the office added during this demo, newest first
-  function added() {
-    return ARTICLES.filter(function (a) { return a.addedBy; });
-  }
-
-  function isSeed(code) {
-    return SEED.some(function (a) { return a.code === code; });
-  }
-
   function add(product) {
     hydrate();
 
@@ -414,8 +405,6 @@ const ProductStore = (function () {
   return {
     hydrate: hydrate,
     all: all,
-    added: added,
-    isSeed: isSeed,
     add: add,
     remove: remove,
     reset: reset,
