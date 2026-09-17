@@ -598,6 +598,262 @@ function noteFor(action, order) {
 }
 
 // ============================================================
+// PRODUCTS
+//
+// The office puts an article on the books and the salesman can
+// sell it immediately. Photographs are optional: without one the
+// product is drawn from its strap and colour like the rest of the
+// range, so a half-finished catalogue never looks broken.
+// ============================================================
+
+// A photograph off a phone is several megabytes; localStorage holds a
+// few, and the order book shares it. So nothing is stored as picked —
+// it is redrawn smaller first. 420px is more than the largest slot on
+// either screen (a shop card is 112px tall) at twice the pixel density.
+const PHOTO_MAX_PX = 420;
+const PHOTO_QUALITY = 0.72;
+
+// what the form is holding, until Save
+let photoData = null;
+
+function shrinkPhoto(file, done, fail) {
+  if (!/^image\//.test(file.type)) {
+    return fail("That file is not an image. Pick a JPG or PNG.");
+  }
+
+  const reader = new FileReader();
+
+  reader.onerror = function () { fail("That photo could not be read."); };
+
+  reader.onload = function () {
+    const img = new Image();
+
+    img.onerror = function () {
+      fail("That photo could not be opened. Try a different one.");
+    };
+
+    img.onload = function () {
+      const scale = Math.min(1, PHOTO_MAX_PX / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+
+      const ctx = canvas.getContext("2d");
+      // photos of footwear are shot on white; a transparent PNG would
+      // otherwise turn black once it is flattened into a JPEG
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+
+      try {
+        done(canvas.toDataURL("image/jpeg", PHOTO_QUALITY));
+      } catch (e) {
+        fail("That photo could not be processed. Try a different one.");
+      }
+    };
+
+    img.src = reader.result;
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function showPhoto(dataUrl) {
+  photoData = dataUrl;
+  const box = el("pPreview");
+
+  if (dataUrl) {
+    box.innerHTML = '<img src="' + esc(dataUrl) + '" alt="Photo of the new product">';
+  } else {
+    box.innerHTML = '<span class="photobox-empty">No photo yet</span>';
+    el("pPhoto").value = "";
+  }
+
+  el("pPhotoClear").hidden = !dataUrl;
+}
+
+function prodError(msg) {
+  const box = el("prodError");
+  box.textContent = msg;
+  box.hidden = !msg;
+  if (msg) flash(box, "is-shake");
+}
+
+function initProductForm() {
+  el("pCategory").innerHTML = CATEGORIES.map(function (c) {
+    return '<option value="' + c.key + '">' + esc(c.label) + "</option>";
+  }).join("");
+
+  el("pBrand").innerHTML = BRANDS.map(function (b) {
+    return '<option value="' + b.key + '">' + esc(b.name) + " \u2014 " +
+      esc(b.tagline) + "</option>";
+  }).join("");
+
+  el("pStyle").innerHTML = STYLES.map(function (s) {
+    return '<option value="' + s.key + '">' + esc(s.label) + "</option>";
+  }).join("");
+
+  el("pColours").innerHTML = COLOUR_CHOICES.map(function (col, i) {
+    const c = COLOUR_HEX[col];
+    return '<label class="checkbox"><input type="checkbox" value="' + col + '"' +
+      (i === 0 ? " checked" : "") + '>' +
+      '<span class="checkbox-dot" style="background:' + c.body + '"></span>' +
+      esc(col) + "</label>";
+  }).join("");
+
+  // the code is handed out, not typed, so it follows the category
+  el("pCategory").addEventListener("change", showNextCode);
+
+  el("addProductBtn").addEventListener("click", openProductForm);
+  el("pCancel").addEventListener("click", closeProductForm);
+
+  el("pPhoto").addEventListener("change", function () {
+    const file = el("pPhoto").files && el("pPhoto").files[0];
+    if (!file) return;
+    prodError("");
+    shrinkPhoto(file, showPhoto, function (msg) {
+      showPhoto(null);
+      prodError(msg);
+    });
+  });
+
+  el("pPhotoClear").addEventListener("click", function () { showPhoto(null); });
+
+  el("prodForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    saveProduct();
+  });
+
+  el("prodList").addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-remove]");
+    if (btn) removeProduct(btn.dataset.remove);
+  });
+}
+
+function showNextCode() {
+  el("pCodeNote").textContent = "It will be given the code " +
+    nextArticleCode(el("pCategory").value) + ".";
+}
+
+function openProductForm() {
+  el("prodForm").hidden = false;
+  el("addProductBtn").hidden = true;
+  showNextCode();
+  el("pName").focus();
+}
+
+function closeProductForm() {
+  el("prodForm").hidden = true;
+  el("addProductBtn").hidden = false;
+  el("prodForm").reset();
+  showPhoto(null);
+  prodError("");
+}
+
+function chosenColours() {
+  return Array.prototype.slice
+    .call(el("pColours").querySelectorAll("input:checked"))
+    .map(function (i) { return i.value; });
+}
+
+function saveProduct() {
+  const name = el("pName").value.trim();
+  const rate = parseInt(el("pRate").value, 10);
+  const stock = parseInt(el("pStock").value, 10);
+  const colours = chosenColours();
+
+  if (!name) return prodError("Give the product a name.");
+  if (!rate || rate < 1) return prodError("Put in what a dealer pays per pair.");
+  if (colours.length === 0) return prodError("Pick at least one colour.");
+
+  const category = el("pCategory").value;
+  const pairs = isNaN(stock) || stock < 0 ? 0 : stock;
+
+  const stockByColour = Object.create(null);
+  colours.forEach(function (col) { stockByColour[col] = spreadStock(pairs); });
+
+  const result = ProductStore.add({
+    code: nextArticleCode(category),
+    name: name,
+    category: category,
+    brand: el("pBrand").value,
+    style: el("pStyle").value,
+    rate: rate,
+    colours: colours,
+    stock: stockByColour,
+    image: photoData || null,
+    isNew: true,                 // it lands in the shop's New launches strip
+    addedBy: me.name,
+    addedOn: isoToday()
+  });
+
+  if (result.error) return prodError(result.error);
+
+  closeProductForm();
+  toast(result.product.code + " added. It is in the salesman's shop now.");
+  renderProducts();
+}
+
+function removeProduct(code) {
+  const a = getArticle(code);
+  const result = ProductStore.remove(code);
+  if (result.error) {
+    prodError(result.error);
+  } else {
+    toast((a ? a.name : code) + " taken off the list.");
+  }
+  renderProducts();
+}
+
+function renderProducts() {
+  const mine = ProductStore.added();
+
+  el("productCount").textContent = ARTICLES.length + " products" +
+    (mine.length ? " \u00B7 " + mine.length + " added by the office" : "");
+
+  el("prodList").innerHTML = ARTICLES.map(function (a) {
+    const brand = getBrand(a.brand);
+    const pairs = articleStock(a.code);
+    const dots = a.colours.map(function (col) {
+      const c = COLOUR_HEX[col] || COLOUR_HEX.Black;
+      return '<span class="prod-dot" style="background:' + c.body +
+        '" title="' + esc(col) + '"></span>';
+    }).join("");
+
+    return '<article class="prod">' +
+      '<span class="prod-img">' + productImage(a.code, a.colours[0]) + "</span>" +
+      '<span class="prod-main">' +
+        '<span class="prod-code">' + esc(a.code) +
+          (a.addedBy ? '<span class="chip chip-soft">Added by office</span>' : "") +
+        "</span>" +
+        '<span class="prod-name">' + esc(a.name) + "</span>" +
+        '<span class="prod-sub">' + esc(brand ? brand.name : "") + " \u00B7 " +
+          esc(roleFreeCategory(a.category)) + "</span>" +
+      "</span>" +
+      '<span class="prod-dots">' + dots + "</span>" +
+      '<span class="prod-figs">' +
+        '<span class="prod-rate num">' + rupees(a.rate) + "</span>" +
+        '<span class="prod-stock num">' + groupIndian(pairs) + " pairs</span>" +
+      "</span>" +
+      '<span class="prod-act">' +
+        (a.addedBy
+          ? '<button type="button" class="btn-ghost" data-remove="' + a.code +
+            '">Remove</button>'
+          : '<span class="hint">Part of the range</span>') +
+      "</span>" +
+    "</article>";
+  }).join("");
+}
+
+function roleFreeCategory(key) {
+  const c = CATEGORIES.find(function (x) { return x.key === key; });
+  return c ? c.label : key;
+}
+
+// ============================================================
 // ADMINISTRATION — one table, picked from the dropdown
 // ============================================================
 
@@ -674,6 +930,7 @@ function renderAll() {
   renderSales();
   renderPurchase();
   renderOrders();
+  renderProducts();
   renderAdmin();
 }
 
@@ -682,10 +939,17 @@ if (me) {
   initCharts();
   initShell();
   initOrders();
+  initProductForm();
 
   el("resetDemoBtn").addEventListener("click", function () {
     OrderStore.reset();
     toast("All orders put back to the start.");
+    renderAll();
+  });
+
+  el("resetProductsBtn").addEventListener("click", function () {
+    ProductStore.reset();
+    toast("Products put back to the original range.");
     renderAll();
   });
 

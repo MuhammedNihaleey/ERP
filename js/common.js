@@ -192,6 +192,24 @@ function buildChappal(articleCode, colourName) {
 }
 
 // ============================================================
+// WHAT A PRODUCT LOOKS LIKE
+//
+// A product the office added may carry a photograph; everything
+// else falls back to the drawing above. Both come out wearing the
+// same .chappal class, so every place that shows a product — shop
+// card, picker row, order line, review table — sizes them
+// identically and none of those need to know which they got.
+// ============================================================
+
+function productImage(articleCode, colourName) {
+  const a = getArticle(articleCode);
+  if (!a || !a.image) return chappalSVG(articleCode, colourName);
+
+  return '<img class="chappal chappal-photo" src="' + esc(a.image) +
+    '" alt="' + esc(a.name || articleCode) + '" loading="lazy">';
+}
+
+// ============================================================
 // ORDER LINE MARKUP
 // The expanded rows inside an order card. Shared so a salesman and
 // the office are always looking at an identically drawn order.
@@ -202,7 +220,7 @@ function orderLinesMarkup(order) {
     const art = getArticle(l.code);
     const col = COLOUR_HEX[l.colour] || COLOUR_HEX.Black;
     return '<div class="ordline">' +
-      '<span class="ordline-img">' + chappalSVG(l.code, l.colour) + "</span>" +
+      '<span class="ordline-img">' + productImage(l.code, l.colour) + "</span>" +
       '<span class="ordline-main">' +
         '<span class="ordline-code">' + l.code + "</span>" +
         '<span class="ordline-name">' + esc(art ? art.name : "") + "</span>" +

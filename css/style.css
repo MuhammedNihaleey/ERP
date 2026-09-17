@@ -3063,6 +3063,274 @@ tbody tr:last-child td {
 }
 
 /* ============================================================
+   PRODUCTS — the office adds an article
+   ============================================================ */
+
+/* a photograph stands in for the drawing, sized by the same rules */
+.chappal-photo {
+  object-fit: contain;
+  max-width: 100%;
+  border-radius: 3px;
+}
+
+.prodform {
+  padding: 22px;
+  margin-bottom: 26px;
+  background: var(--surface);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+  animation: panelIn 0.2s var(--ease) both;
+}
+
+.prodform-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+}
+
+.prodform-wide {
+  grid-column: 1 / -1;
+}
+
+/* colours it comes in */
+.checkrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px 9px 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), background-color 0.15s var(--ease);
+}
+
+.checkbox:hover { border-color: var(--accent-line); }
+
+.checkbox:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.checkbox input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.checkbox-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+/* photo */
+.photorow {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.photobox {
+  flex: 0 0 132px;
+  width: 132px;
+  height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.photobox img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 3px;
+}
+
+.photobox-empty {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.photorow-side {
+  flex: 1 1 230px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* the real input is hidden behind its own label, which is the button —
+   a bare file input cannot be styled and reads as unfinished */
+.filepick {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.photorow-side label.btn-ghost {
+  cursor: pointer;
+}
+
+/* keyboard focus lands on the hidden input, so the button it hides
+   has to show the ring */
+.filepick:focus-visible + label.btn-ghost {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.photorow-side .hint {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ---------- the catalogue list ---------- */
+
+.prodlist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prod {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color 0.15s var(--ease);
+}
+
+.prod:hover { border-color: var(--accent-line); }
+
+.prod-img {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prod-img .chappal { height: 100%; width: auto; }
+
+.prod-code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.prod-name {
+  display: block;
+  font-size: 14px;
+}
+
+.prod-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.prod-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.prod-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.prod-figs { text-align: right; }
+
+.prod-rate {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.prod-stock {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.prod-act { text-align: right; }
+
+@media (max-width: 720px) {
+  .prodform {
+    padding: 16px;
+  }
+
+  .prodform-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .photobox {
+    flex-basis: 104px;
+    width: 104px;
+    height: 104px;
+  }
+
+  /* the row folds: picture and name, then the figures under them */
+  .prod {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "img  main  figs"
+      "img  dots  dots"
+      "act  act   act";
+    gap: 8px 14px;
+    padding: 12px;
+  }
+
+  .prod-img  { grid-area: img; align-self: start; }
+  .prod-main { grid-area: main; }
+  .prod-figs { grid-area: figs; }
+  .prod-dots { grid-area: dots; }
+
+  .prod-act {
+    grid-area: act;
+    text-align: left;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+
+  .prod-act .btn-ghost { width: 100%; }
+}
+
+/* ============================================================
    STATE UTILITIES
    Declared last on purpose. These are single-class selectors, so
    a component rule of equal specificity that sets `color` later in

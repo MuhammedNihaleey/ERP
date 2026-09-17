@@ -12,6 +12,8 @@
 //                same origin. A salesman places an order, the
 //                office approves it, and the salesman sees the
 //                decision — live, without a reload.
+//   ProductStore — the same idea for the catalogue: the office adds
+//                a product and it appears in the salesman's shop.
 //
 // Loaded after data.js: it hydrates that file's ORDERS array and
 // nextOrderNumber from storage, so every screen starts from the
@@ -267,6 +269,156 @@ const OrderStore = (function () {
     markSeen: markSeen,
     unseenCount: unseenCount,
     forSalesman: forSalesman,
+    onChange: onChange
+  };
+})();
+
+
+// ============================================================
+// CATALOGUE
+//
+// The office adds products; the salesman sells them. Same shape as
+// the order book above: one shared list in localStorage, ARTICLES
+// refilled in place so every screen already holding a reference to
+// it sees the change, and a live event so an open salesman tab
+// updates without a reload.
+//
+// Photographs live on the product record as data URLs. They are
+// shrunk before they get here (see the office screen) because
+// localStorage is small and shared with the order book — a stored
+// catalogue that will not fit is the one failure this has to
+// survive, so every write is guarded.
+// ============================================================
+
+const ProductStore = (function () {
+  const KEY = "sfw.erp.products.v1";
+  const LOCAL_EVENT = "sfw-products-changed";
+
+  // the catalogue shipped in data.js, kept aside so the demo can be reset
+  const SEED = JSON.parse(JSON.stringify(ARTICLES));
+
+  function read() {
+    const raw = storageGet("localStorage", KEY);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ARTICLES is a const in data.js and every screen holds a reference to it,
+  // so it is refilled in place rather than replaced.
+  function adopt(list) {
+    ARTICLES.length = 0;
+    list.forEach(function (a) { ARTICLES.push(a); });
+    reindexArticles();
+  }
+
+  // Returns null on success, or a message to show the user. A catalogue with
+  // photographs can outgrow localStorage; when it does the product is not
+  // silently dropped — the caller is told, so it can say so and put the
+  // list back. A browser that refuses storage altogether (a private window)
+  // is a different thing and is not an error: the catalogue simply lives in
+  // memory for that tab, exactly as the order book does.
+  function persist() {
+    const json = JSON.stringify(ARTICLES);
+    const store = safeStorage("localStorage");
+
+    if (store) {
+      const previous = store.getItem(KEY);
+      try {
+        store.setItem(KEY, json);
+      } catch (e) {
+        // leave the stored copy exactly as it was
+        if (previous !== null) {
+          try { store.setItem(KEY, previous); } catch (ignored) {}
+        }
+        return "There is no room left in this browser to save another photo. " +
+          "Remove a product you no longer need, or add this one without a photo.";
+      }
+    }
+
+    memoryFallback[KEY] = json;
+    window.dispatchEvent(new CustomEvent(LOCAL_EVENT));
+    return null;
+  }
+
+  function hydrate() {
+    const stored = read();
+    if (stored) adopt(stored);
+    else persist();
+  }
+
+  function all() {
+    return ARTICLES.slice();
+  }
+
+  // products the office added during this demo, newest first
+  function added() {
+    return ARTICLES.filter(function (a) { return a.addedBy; });
+  }
+
+  function isSeed(code) {
+    return SEED.some(function (a) { return a.code === code; });
+  }
+
+  function add(product) {
+    hydrate();
+
+    if (getArticle(product.code)) {
+      return { error: "A product with code " + product.code + " already exists." };
+    }
+
+    ARTICLES.unshift(product);
+    reindexArticles();
+
+    const problem = persist();
+    if (problem) {
+      // put the catalogue back the way it was rather than leave the screen
+      // showing a product that was never saved
+      hydrate();
+      return { error: problem };
+    }
+    return { product: product };
+  }
+
+  function remove(code) {
+    hydrate();
+    const i = ARTICLES.findIndex(function (a) { return a.code === code; });
+    if (i === -1) return { error: "That product is no longer in the list." };
+
+    const gone = ARTICLES.splice(i, 1)[0];
+    reindexArticles();
+    persist();
+    return { product: gone };
+  }
+
+  function reset() {
+    adopt(JSON.parse(JSON.stringify(SEED)));
+    persist();
+  }
+
+  function onChange(fn) {
+    window.addEventListener("storage", function (e) {
+      if (e.key !== KEY) return;
+      hydrate();
+      fn(ARTICLES);
+    });
+    window.addEventListener(LOCAL_EVENT, function () { fn(ARTICLES); });
+  }
+
+  hydrate();
+
+  return {
+    hydrate: hydrate,
+    all: all,
+    added: added,
+    isSeed: isSeed,
+    add: add,
+    remove: remove,
+    reset: reset,
     onChange: onChange
   };
 })();

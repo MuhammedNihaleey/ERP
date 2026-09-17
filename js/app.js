@@ -258,7 +258,7 @@ function cardMarkup(a, opts) {
     (a.isNew ? '<span class="card-flag">New</span>' : "") +
     '<span class="card-inbag">Added</span>' +
     (note ? '<span class="card-flag card-flag-warn">' + note + "</span>" : "") +
-    '<div class="card-img">' + chappalSVG(a.code, a.colours[0]) + "</div>" +
+    '<div class="card-img">' + productImage(a.code, a.colours[0]) + "</div>" +
     '<div class="card-top">' +
       '<span class="card-code">' + a.code + "</span>" +
       '<span class="card-rate num">' + rupees(a.rate) + "</span>" +
@@ -316,10 +316,16 @@ function renderShop() {
   el("stripFast").innerHTML = ARTICLES.filter(function (a) { return a.fastMoving; })
     .map(function (a) { return cardMarkup(a); }).join("");
 
-  // the four thinnest articles in the godown
-  const low = ARTICLES.slice()
-    .sort(function (x, y) { return articleStock(x.code) - articleStock(y.code); })
-    .slice(0, 4);
+  // The four thinnest articles in the godown. Two are left out: anything with
+  // nothing left (that is out of stock, not a clearance line) and anything
+  // flagged as a new launch — a product cannot sensibly be advertised as both
+  // "New" and "order soon, running out", and a freshly added product starts
+  // with the smallest stock in the building, so it would always be both.
+  const low = ARTICLES.filter(function (a) {
+    return articleStock(a.code) > 0 && !a.isNew;
+  }).sort(function (x, y) {
+    return articleStock(x.code) - articleStock(y.code);
+  }).slice(0, 4);
   el("stripLow").innerHTML = low.map(function (a) {
     return cardMarkup(a, { note: groupIndian(articleStock(a.code)) + " left" });
   }).join("");
@@ -756,7 +762,7 @@ function renderPickerList() {
 
     return '<button type="button" class="prow' + (boxes > 0 ? " is-in-bag" : "") +
         '" data-code="' + a.code + '">' +
-      '<span class="prow-img">' + chappalSVG(a.code, a.colours[0]) + "</span>" +
+      '<span class="prow-img">' + productImage(a.code, a.colours[0]) + "</span>" +
       '<span class="prow-main">' +
         '<span class="prow-code">' + a.code +
           (boxes > 0 ? '<span class="prow-added">' + boxes + " added</span>" : "") +
@@ -808,7 +814,7 @@ function initSelected() {
     if (key === "colour") {
       const img = el("selList").querySelector('[data-img="' + item.id + '"]');
       if (img) {
-        img.innerHTML = chappalSVG(item.code, item.colour);
+        img.innerHTML = productImage(item.code, item.colour);
         flash(img, "is-swapping");
       }
     }
@@ -982,7 +988,7 @@ function drawSelected() {
 
     return '<div class="sel row-in' + (valid ? "" : " is-invalid") + '">' +
       '<div class="sel-img" data-img="' + it.id + '">' +
-        chappalSVG(it.code, it.colour) +
+        productImage(it.code, it.colour) +
       "</div>" +
 
       '<div class="sel-main">' +
@@ -1223,7 +1229,7 @@ function renderReview() {
 
     return "<tr>" +
       '<td><span class="rev-cell">' +
-        '<span class="rev-img">' + chappalSVG(it.code, it.colour) + "</span>" +
+        '<span class="rev-img">' + productImage(it.code, it.colour) + "</span>" +
         '<span><span class="t-name">' + it.code + "</span>" +
           '<span class="t-sub">' + esc(art.name) + " \u00B7 " +
             esc(getBrand(art.brand).name) + "</span></span>" +
@@ -1614,4 +1620,50 @@ if (me) {
       renderPendingBadge();
     }
   });
+
+  // The office adding a product in another tab writes to the shared
+  // catalogue. Redraw the shop around it, and say so — a salesman with the
+  // screen open should not have to reload to sell something new.
+  let knownCodes = ARTICLES.map(function (a) { return a.code; });
+
+  ProductStore.onChange(function () {
+    const codes = ARTICLES.map(function (a) { return a.code; });
+    const fresh = ARTICLES.filter(function (a) {
+      return knownCodes.indexOf(a.code) === -1;
+    });
+    const dropped = knownCodes.filter(function (c) { return codes.indexOf(c) === -1; });
+    knownCodes = codes;
+
+    // anything taken off the catalogue has to leave the working order too,
+    // or the salesman could place an order for a product that is gone
+    const before = state.items.length;
+    state.items = state.items.filter(function (it) { return getArticle(it.code); });
+    const lost = before - state.items.length;
+
+    redrawCatalogue();
+
+    if (fresh.length === 1) {
+      toast("New product from the office: " + fresh[0].name + " (" + fresh[0].code + ").");
+    } else if (fresh.length > 1) {
+      toast(fresh.length + " new products added by the office.");
+    } else if (lost > 0) {
+      toast(lost === 1
+        ? "A product in your order was withdrawn by the office and removed."
+        : lost + " products in your order were withdrawn by the office and removed.");
+    } else if (dropped.length > 0) {
+      toast("The office withdrew a product from the range.");
+    }
+  });
+}
+
+// everything on this screen that is drawn from the catalogue.
+// renderShop covers the strips, the brand rail and the grid.
+function redrawCatalogue() {
+  renderShop();
+  renderPickerList();
+  renderSelected();
+  renderTotals();
+  renderStockTab();
+  renderBagCount();
+  renderBagBar();
 }

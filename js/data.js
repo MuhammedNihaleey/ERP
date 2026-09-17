@@ -206,30 +206,90 @@ const STOCK = {
   "KID-1310|Blue": [55, 48, 40, 32, 25]
 };
 
+// A product the office adds carries its own opening stock on the record,
+// so it is looked at before the fixed godown table above.
 function getStock(articleCode, colour) {
+  const a = getArticle(articleCode);
+  if (a && a.stock && a.stock[colour]) return a.stock[colour];
   return STOCK[articleCode + "|" + colour] || [0, 0, 0, 0, 0];
 }
 
-const ARTICLE_BY_CODE = new Map(ARTICLES.map(function (a) { return [a.code, a]; }));
+// ARTICLES is refilled in place whenever the office adds or removes a
+// product, so the lookups below are rebuilt rather than built once.
+let ARTICLE_BY_CODE = new Map();
+let ARTICLE_STOCK = Object.create(null);
+
+function reindexArticles() {
+  ARTICLE_BY_CODE = new Map(ARTICLES.map(function (a) { return [a.code, a]; }));
+
+  // total pairs in the godown per article, totalled here rather than
+  // rescanned on every sort comparison
+  ARTICLE_STOCK = Object.create(null);
+
+  Object.keys(STOCK).forEach(function (k) {
+    const code = k.split("|")[0];
+    const sum = STOCK[k].reduce(function (a, b) { return a + b; }, 0);
+    ARTICLE_STOCK[code] = (ARTICLE_STOCK[code] || 0) + sum;
+  });
+
+  // anything the office added brings its own opening stock
+  ARTICLES.forEach(function (a) {
+    if (!a.stock) return;
+    ARTICLE_STOCK[a.code] = Object.keys(a.stock).reduce(function (t, col) {
+      return t + a.stock[col].reduce(function (x, y) { return x + y; }, 0);
+    }, 0);
+  });
+}
 
 function getArticle(code) {
   return ARTICLE_BY_CODE.get(code);
 }
 
-// total pairs in the godown per article, totalled once at load rather than
-// rescanned on every sort comparison
-const ARTICLE_STOCK = (function () {
-  const totals = Object.create(null);
-  Object.keys(STOCK).forEach(function (k) {
-    const code = k.split("|")[0];
-    const sum = STOCK[k].reduce(function (a, b) { return a + b; }, 0);
-    totals[code] = (totals[code] || 0) + sum;
-  });
-  return totals;
-})();
-
 function articleStock(code) {
   return ARTICLE_STOCK[code] || 0;
+}
+
+reindexArticles();
+
+// ============================================================
+// ADDING A PRODUCT
+// What the office picks from when it puts a new article on the
+// books. Styles decide how the fallback drawing is inked, for a
+// product added without a photograph.
+// ============================================================
+
+const STYLES = [
+  { key: "thong",  label: "Thong (V strap)" },
+  { key: "band",   label: "Band across" },
+  { key: "cross",  label: "Cross straps" },
+  { key: "tstrap", label: "T-strap" }
+];
+
+const COLOUR_CHOICES = ["Black", "Brown", "Blue"];
+
+// Codes are handed out rather than typed, so two products can never collide
+// and nobody has to know the numbering scheme.
+function nextArticleCode(categoryKey) {
+  const cat = CATEGORIES.find(function (c) { return c.key === categoryKey; });
+  const prefix = (cat ? cat.prefix : "GTS") + "-";
+
+  const highest = ARTICLES.reduce(function (max, a) {
+    if (a.code.indexOf(prefix) !== 0) return max;
+    const n = parseInt(a.code.slice(prefix.length), 10);
+    return isNaN(n) ? max : Math.max(max, n);
+  }, 0);
+
+  return prefix + (highest + 1);
+}
+
+// Spread a pairs-per-colour figure across the five sizes the way a normal
+// box is made up, so a new product behaves like every other one.
+function spreadStock(pairsPerColour) {
+  const ratio = PRESETS.standard;
+  const total = ratio.reduce(function (a, b) { return a + b; }, 0);
+  return ratio.map(function (r) {
+    return Math.round((pairsPerColour * r) / total);
+  });
 }
 
 const PAYMENTS = [
